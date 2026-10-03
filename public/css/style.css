@@ -203,6 +203,15 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: .92rem;
 }
 .inv-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.inv-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media screen and (max-width: 768px) {
+  .invoice { padding: 14px 12px; }
+  .inv-table-scroll { margin: 0 -4px; padding-bottom: 6px; }
+  .inv-table-scroll .inv-table { min-width: 720px; }
+  .inv-table td:not([colspan]) { white-space: nowrap; }
+  .inv-title { font-size: 1.1rem; }
+  .grand-amount { font-size: 1.35rem; }
+}
 .inv-table th {
   background: var(--navy); color: #fff; padding: 7px 6px; text-align: left; white-space: nowrap;
 }
@@ -238,4 +247,5 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   .container { max-width: none; padding: 0; }
   .invoice { border: none; box-shadow: none; border-radius: 0; padding: 6px; }
   .inv-table { font-size: .72rem; }
+  .inv-table-scroll { overflow: visible; }
 }

@@ -51,6 +51,7 @@
   </div>
 
   <% if (bill.type === 'aggregate') { %>
+  <div class="inv-table-scroll">
   <table class="inv-table">
     <thead>
       <tr><th>S.No</th><th>Date</th><th>Veh No</th><th>DC No</th><th>Description</th><th>Trip</th><th>Per Trip Cft</th><th>Total Cft</th><th>Rate (Rs.)</th><th>Amount (Rs.)</th></tr>
@@ -73,6 +74,8 @@
     </tbody>
   </table>
 
+  </div><!-- /inv-table-scroll -->
+
   <div class="inv-summary">
     <div class="inv-sumbox">
       <h4>SUMMARY OF TOTALS</h4>
@@ -87,6 +90,7 @@
     </div>
   </div>
   <% } else { %>
+  <div class="inv-table-scroll">
   <table class="inv-table">
     <thead>
       <tr><th>Sr#</th><th>Date</th><th>Veh No</th><th>DC #</th><th>Description</th><th>Trip</th><th>Gln</th><th>Qty</th><th>Rate</th><th>Amount (Rs.)</th></tr>
@@ -112,6 +116,7 @@
       </tr>
     </tbody>
   </table>
+  </div><!-- /inv-table-scroll -->
   <p class="inv-words">Amount in Words: <%= words %></p>
   <% } %>
 
