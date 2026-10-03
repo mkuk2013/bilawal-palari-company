@@ -4,10 +4,10 @@ const CACHE = 'bilawal-palari-v1';
 const STATIC_ASSETS = [
   '/css/style.css',
   '/js/app.js',
-  '/logo.jpg',
+  '/Company%20logo.jpg',
   '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  '/App%20icon%20192.png',
+  '/App%20icon%20512.png',
 ];
 
 self.addEventListener('install', (event) => {
