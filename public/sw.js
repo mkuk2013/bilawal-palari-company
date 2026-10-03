@@ -1,6 +1,6 @@
 /* Bilawal Palari & Company — simple service worker.
    Static assets: cache-first. Pages: network-first with offline fallback. */
-const CACHE = 'bilawal-palari-v1';
+const CACHE = 'bilawal-palari-v2';
 const STATIC_ASSETS = [
   '/css/style.css',
   '/js/app.js',

@@ -20,6 +20,7 @@
   <div class="top-actions">
     <span class="user-chip"><%= currentUser.username %> · <%= currentUser.role === 'admin' ? 'Admin' : 'User' %></span>
     <a class="btn btn-small btn-gold" href="/account/password">Password</a>
+    <button type="button" class="btn btn-small btn-gold install-app-btn" style="display:none">&#128242; Install App</button>
     <a class="btn btn-small btn-outline" href="/logout">Logout</a>
   </div>
 </header>

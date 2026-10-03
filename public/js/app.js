@@ -7,6 +7,32 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// "Install App" button: the browser fires beforeinstallprompt when the app
+// is installable; only then do we reveal the on-page install buttons.
+let deferredInstallPrompt = null;
+function showInstallButtons(show) {
+  document.querySelectorAll('.install-app-btn').forEach((b) => {
+    b.style.display = show ? '' : 'none';
+  });
+}
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallButtons(true);
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  showInstallButtons(false);
+});
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.install-app-btn');
+  if (!btn || !deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch (err) { /* dismissed */ }
+  deferredInstallPrompt = null;
+  showInstallButtons(false);
+});
+
 const money = (n) =>
   Number(n || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
