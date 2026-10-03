@@ -1,0 +1,16 @@
+</main>
+<% if (currentUser) { %>
+<nav class="bottomnav no-print">
+  <a href="/" class="<%= path === '/' ? 'active' : '' %>"><span class="ic">🏠</span><span>Home</span></a>
+  <a href="/orders" class="<%= path.startsWith('/orders') ? 'active' : '' %>"><span class="ic">🧾</span><span>Orders</span></a>
+  <a href="/bills" class="<%= path.startsWith('/bills') ? 'active' : '' %>"><span class="ic">💰</span><span>Bills</span></a>
+  <a href="/fleet" class="<%= path.startsWith('/fleet') ? 'active' : '' %>"><span class="ic">🚚</span><span>Fleet</span></a>
+  <a href="/materials" class="<%= path.startsWith('/materials') ? 'active' : '' %>"><span class="ic">🧱</span><span>Supply</span></a>
+  <% if (currentUser.role === 'admin') { %>
+  <a href="/admin" class="<%= path.startsWith('/admin') ? 'active' : '' %>"><span class="ic">📊</span><span>Admin</span></a>
+  <% } %>
+</nav>
+<% } %>
+<script src="/js/app.js"></script>
+</body>
+</html>

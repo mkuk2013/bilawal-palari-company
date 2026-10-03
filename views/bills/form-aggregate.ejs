@@ -1,0 +1,46 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <h2>New aggregate bill</h2>
+  <form method="post" action="/bills/aggregate" id="billForm" data-bill-type="aggregate">
+    <div class="form-grid">
+      <label>Bill To (customer)
+        <select name="customerName" id="customerName">
+          <% customers.forEach(c => { %><option value="<%= c.name %>" data-project="<%= c.project %>"><%= c.name %></option><% }) %>
+        </select>
+      </label>
+      <label>Project
+        <input type="text" name="project" id="project">
+      </label>
+      <label>Billing month
+        <input type="text" name="billingMonth" placeholder="e.g. September 2026">
+      </label>
+      <label>Date issued
+        <input type="date" name="dateIssued" value="<%= today %>">
+      </label>
+    </div>
+
+    <h3>Trip lines</h3>
+    <div class="table-wrap">
+      <table class="table lines-table">
+        <thead><tr><th>Date</th><th>Veh No</th><th>DC No</th><th>Description</th><th>Trip</th><th>Per Trip Cft</th><th>Rate</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="linesBody"></tbody>
+      </table>
+    </div>
+    <div class="row-between">
+      <button type="button" class="btn btn-ghost" id="addRowBtn">+ Add line</button>
+      <p class="amount-preview">Grand Total: <strong>Rs <span id="grandTotal">0.00</span></strong></p>
+    </div>
+    <button type="submit" class="btn btn-gold btn-block">Save bill</button>
+  </form>
+</section>
+
+<datalist id="vehList">
+  <% vehicles.forEach(v => { %><option value="<%= v.regNo %>"></option><% }) %>
+</datalist>
+<script>
+  window.VEH_CAPS = <%- JSON.stringify(Object.fromEntries(vehicles.map(v => [v.regNo, v.capacity]))) %>;
+  window.MAT_RATES = <%- JSON.stringify(Object.fromEntries(materials.map(m => [m.name, m.rate]))) %>;
+  window.MAT_NAMES = <%- JSON.stringify(materials.map(m => m.name)) %>;
+  window.DEFAULT_DATE = <%- JSON.stringify(today) %>;
+</script>
+<%- include('../partials/footer') %>

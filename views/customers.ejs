@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<%- include('partials/subtabs') %>
+<section class="card">
+  <h2><%= editing ? 'Edit customer' : 'Add a customer' %></h2>
+  <form method="post" action="/customers" class="form form-inline">
+    <% if (editing) { %><input type="hidden" name="id" value="<%= editing.id %>"><% } %>
+    <label>Customer name
+      <input type="text" name="name" required value="<%= editing ? editing.name : '' %>" placeholder="e.g. U.TOPIA CONSTRUCTION">
+    </label>
+    <label>Project / Site
+      <input type="text" name="project" value="<%= editing ? editing.project : '' %>" placeholder="Default project">
+    </label>
+    <label>Phone
+      <input type="text" name="phone" value="<%= editing ? editing.phone : '' %>">
+    </label>
+    <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Add customer' %></button>
+    <% if (editing) { %><a class="btn btn-ghost" href="/customers">Cancel</a><% } %>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Customers</h2>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Customer</th><th>Project</th><th>Phone</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% customers.forEach(c => { %>
+      <tr><td><strong><%= c.name %></strong></td><td><%= c.project %></td><td><%= c.phone || '—' %></td>
+        <td class="actions-cell"><a class="btn btn-small btn-navy" href="/customers?edit=<%= c.id %>">Edit</a>
+        <form method="post" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Delete this customer?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('partials/footer') %>

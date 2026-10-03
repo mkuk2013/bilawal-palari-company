@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+<section class="hero">
+  <img src="/logo.jpg" alt="Company logo" class="hero-logo">
+  <div>
+    <h1><%= company.name %></h1>
+    <p><%= company.tagline %></p>
+    <p class="small">Office: <%= company.office %> · Ph: <%= company.phones.join(' • ') %></p>
+  </div>
+</section>
+
+<section class="grid stats">
+  <div class="card stat"><span class="stat-num"><%= stats.totalOrders %></span><span class="stat-label">Orders <%= currentUser.role === 'admin' ? '(all users)' : '(mine)' %></span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.pending %></span><span class="stat-label">Pending orders</span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.todayOrders %></span><span class="stat-label">Orders booked today</span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.billsCount %></span><span class="stat-label">Saved bills</span></div>
+  <div class="card stat"><span class="stat-num">Rs <%= stats.billsTotal.toLocaleString('en-US') %></span><span class="stat-label">All bills total</span></div>
+  <div class="card stat"><span class="stat-num">Rs <%= stats.unpaidTotal.toLocaleString('en-US') %></span><span class="stat-label">Unpaid bills</span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.vehicles %></span><span class="stat-label">Vehicles in fleet</span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.customers %></span><span class="stat-label">Customers</span></div>
+</section>
+
+<section class="card">
+  <h2>Quick actions</h2>
+  <div class="actions-row">
+    <a class="btn btn-gold" href="/orders/new">+ Book an order</a>
+    <a class="btn btn-navy" href="/bills/new/aggregate">+ Aggregate bill</a>
+    <a class="btn btn-navy" href="/bills/new/water">+ Sweet water bill</a>
+    <a class="btn btn-ghost" href="/customers">Customers</a>
+    <% if (currentUser.role === 'admin') { %><a class="btn btn-ghost" href="/admin">Admin monitoring</a><% } %>
+  </div>
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Recent orders</h2>
+    <% if (!recentOrders.length) { %><p class="muted">No orders yet.</p><% } %>
+    <ul class="simple-list">
+      <% recentOrders.forEach(o => { %>
+        <li><strong><%= o.customerName %></strong> — <%= o.materialName %> · Rs <%= o.amount.toLocaleString('en-US') %> <span class="badge st-<%= o.status.toLowerCase() %>"><%= o.status %></span></li>
+      <% }) %>
+    </ul>
+    <a href="/orders" class="small">View all orders →</a>
+  </section>
+  <section class="card">
+    <h2>Recent bills</h2>
+    <% if (!recentBills.length) { %><p class="muted">No bills yet.</p><% } %>
+    <ul class="simple-list">
+      <% recentBills.forEach(b => { %>
+        <li><a href="/bills/<%= b.id %>"><strong><%= b.billNo %></strong></a> — <%= b.customerName %> · Rs <%= b.total.toLocaleString('en-US') %> <span class="badge <%= b.status === 'paid' ? 'st-delivered' : 'st-pending' %>"><%= b.status %></span></li>
+      <% }) %>
+    </ul>
+    <a href="/bills" class="small">View all bills →</a>
+  </section>
+</div>
+<%- include('partials/footer') %>

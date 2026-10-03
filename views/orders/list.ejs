@@ -1,0 +1,54 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <div class="row-between">
+    <h2>Orders</h2>
+    <a class="btn btn-gold" href="/orders/new">+ Book an order</a>
+  </div>
+  <div class="chips">
+    <a class="chip <%= !status ? 'on' : '' %>" href="/orders">All</a>
+    <% ['Pending','Confirmed','Delivered','Cancelled'].forEach(s => { %>
+      <a class="chip <%= status === s ? 'on' : '' %>" href="/orders?status=<%= s %>"><%= s %></a>
+    <% }) %>
+  </div>
+  <% if (!orders.length) { %><p class="muted">No orders found.</p><% } %>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Delivery</th><th>Customer</th><th>Material</th><th>Site</th><th>Vehicle</th><th>Trips</th><th>Qty/Trip</th><th>Rate</th><th>Amount (Rs)</th><th>Status</th><% if (currentUser.role === 'admin') { %><th>Booked by</th><% } %><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <% orders.forEach(o => { %>
+        <tr>
+          <td><%= o.deliveryDate %></td>
+          <td><%= o.customerName %></td>
+          <td><%= o.materialName %></td>
+          <td><%= o.site %></td>
+          <td><%= o.vehNo || '—' %></td>
+          <td><%= o.trips %></td>
+          <td><%= o.perTripQty %> <%= o.materialUnit === 'gallon' ? 'gal' : 'CFT' %></td>
+          <td><%= o.rate %></td>
+          <td class="num"><strong><%= o.amount.toLocaleString('en-US', {minimumFractionDigits: 2}) %></strong></td>
+          <td><span class="badge st-<%= o.status.toLowerCase() %>"><%= o.status %></span>
+            <% if (o.billedBillNo) { %><br><a class="small" href="/bills/<%= o.billedBillId %>">Bill <%= o.billedBillNo %></a><% } %>
+          </td>
+          <% if (currentUser.role === 'admin') { %><td><%= o.createdBy %></td><% } %>
+          <td class="actions-cell">
+            <% if (o.status === 'Pending') { %>
+              <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Confirmed"><button class="btn btn-small btn-navy" type="submit">Confirm</button></form>
+              <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Cancelled"><button class="btn btn-small btn-ghost" type="submit">Cancel</button></form>
+            <% } else if (o.status === 'Confirmed') { %>
+              <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Delivered"><button class="btn btn-small btn-navy" type="submit">Mark delivered</button></form>
+              <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Cancelled"><button class="btn btn-small btn-ghost" type="submit">Cancel</button></form>
+            <% } %>
+            <% if (!o.billedBillId && o.status !== 'Cancelled') { %>
+              <form method="post" action="/orders/<%= o.id %>/save-as-bill"><button class="btn btn-small btn-gold" type="submit">Save as bill</button></form>
+            <% } %>
+            <form method="post" action="/orders/<%= o.id %>/delete" onsubmit="return confirm('Delete this order?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<%- include('../partials/footer') %>

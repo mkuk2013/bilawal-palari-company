@@ -1,0 +1,51 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <div class="row-between">
+    <h2>📊 Admin — Monitoring</h2>
+    <div class="actions-row">
+      <a class="btn btn-navy" href="/admin/users">Manage users</a>
+      <a class="btn btn-ghost" href="/admin/company">Company profile</a>
+    </div>
+  </div>
+  <div class="grid stats">
+    <div class="card stat"><span class="stat-num">Rs <%= today.total.toLocaleString('en-US') %></span><span class="stat-label">Today's sales</span></div>
+    <div class="card stat"><span class="stat-num">Rs <%= today.bills.toLocaleString('en-US') %></span><span class="stat-label">Today — bills issued</span></div>
+    <div class="card stat"><span class="stat-num">Rs <%= today.orders.toLocaleString('en-US') %></span><span class="stat-label">Today — orders delivered</span></div>
+    <div class="card stat"><span class="stat-num">Rs <%= billsTotals.total.toLocaleString('en-US') %></span><span class="stat-label">All bills total (<%= billsTotals.count %> bills)</span></div>
+    <div class="card stat"><span class="stat-num">Rs <%= billsTotals.paid.toLocaleString('en-US') %></span><span class="stat-label">Paid</span></div>
+    <div class="card stat"><span class="stat-num">Rs <%= billsTotals.unpaid.toLocaleString('en-US') %></span><span class="stat-label">Unpaid</span></div>
+  </div>
+  <p class="chips">
+    <span class="chip">Pending: <strong><%= statusCounts.Pending %></strong></span>
+    <span class="chip">Confirmed: <strong><%= statusCounts.Confirmed %></strong></span>
+    <span class="chip">Delivered: <strong><%= statusCounts.Delivered %></strong></span>
+    <span class="chip">Cancelled: <strong><%= statusCounts.Cancelled %></strong></span>
+  </p>
+</section>
+
+<section class="card">
+  <h2>Daily sales — last 14 days</h2>
+  <p class="muted small">Bills issued that day + orders delivered that day (orders already converted to bills are counted only as bills).</p>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Date</th><th>Bills (Rs)</th><th>Delivered orders (Rs)</th><th>Total (Rs)</th></tr></thead>
+    <tbody>
+      <% days.forEach(d => { %>
+      <tr><td><%= d.label %></td><td class="num"><%= d.bills.toLocaleString('en-US', {minimumFractionDigits: 2}) %></td><td class="num"><%= d.orders.toLocaleString('en-US', {minimumFractionDigits: 2}) %></td><td class="num"><strong><%= d.total.toLocaleString('en-US', {minimumFractionDigits: 2}) %></strong></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <h2>Latest orders — all users</h2>
+  <% if (!latestOrders.length) { %><p class="muted">No orders yet.</p><% } %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>#</th><th>Customer</th><th>Material</th><th>Delivery</th><th>Amount (Rs)</th><th>Status</th><th>Booked by</th></tr></thead>
+    <tbody>
+      <% latestOrders.forEach(o => { %>
+      <tr><td><%= o.id %></td><td><%= o.customerName %></td><td><%= o.materialName %></td><td><%= o.deliveryDate %></td><td class="num"><%= o.amount.toLocaleString('en-US', {minimumFractionDigits: 2}) %></td><td><span class="badge st-<%= o.status.toLowerCase() %>"><%= o.status %></span></td><td><%= o.createdBy %></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('../partials/footer') %>

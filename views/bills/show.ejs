@@ -1,0 +1,137 @@
+<%- include('../partials/header') %>
+<div class="actions-row no-print bill-actions">
+  <a class="btn btn-ghost" href="/bills">← All bills</a>
+  <button class="btn btn-gold" onclick="window.print()">🖨 Print bill</button>
+  <form method="post" action="/bills/<%= bill.id %>/toggle-paid">
+    <button class="btn btn-navy" type="submit"><%= bill.status === 'paid' ? 'Mark unpaid' : 'Mark paid' %></button>
+  </form>
+  <form method="post" action="/bills/<%= bill.id %>/delete" onsubmit="return confirm('Delete this bill?')">
+    <button class="btn btn-danger" type="submit">Delete</button>
+  </form>
+  <span class="badge <%= bill.status === 'paid' ? 'st-delivered' : 'st-cancelled' %>"><%= bill.status.toUpperCase() %></span>
+  <span class="muted small">Saved by <%= bill.savedBy %><% if (bill.fromOrderId) { %> · from order #<%= bill.fromOrderId %><% } %></span>
+</div>
+
+<article class="invoice">
+  <div class="inv-head">
+    <img src="/logo.jpg" alt="Company logo" class="inv-logo">
+    <div class="inv-brand">
+      <h1><%= company.name.toUpperCase() %></h1>
+      <p><%= company.tagline %></p>
+    </div>
+    <div class="inv-contact">
+      Office: <%= company.office %><br>
+      Ph: <%= company.invoicePhone %> · Email: <%= company.email %><br>
+      NTN: <%= company.ntn %>
+    </div>
+  </div>
+
+  <h2 class="inv-title">BILL INVOICE<% if (bill.type === 'water') { %> — SWEET WATER<% } %></h2>
+
+  <div class="inv-meta">
+    <div>
+      <strong>Bill To:</strong><br>
+      <%= bill.customerName %><br>
+      <span class="small">Project: <%= bill.project %></span>
+    </div>
+    <% if (bill.type === 'aggregate') { %>
+    <div>
+      <strong>Billing Month:</strong><br><%= bill.billingMonth || '—' %>
+    </div>
+    <% } else { %>
+    <div>
+      <strong>Billing Period:</strong><br><%= fmtDate(bill.periodFrom) %> to <%= fmtDate(bill.periodTo) %><br>
+      <span class="small">PO No: <%= bill.poNo || '—' %></span>
+    </div>
+    <% } %>
+    <div>
+      <strong>Bill No:</strong> <%= bill.billNo %><br>
+      <strong>Date Issued:</strong> <%= fmtDate(bill.dateIssued) %>
+    </div>
+  </div>
+
+  <% if (bill.type === 'aggregate') { %>
+  <table class="inv-table">
+    <thead>
+      <tr><th>S.No</th><th>Date</th><th>Veh No</th><th>DC No</th><th>Description</th><th>Trip</th><th>Per Trip Cft</th><th>Total Cft</th><th>Rate (Rs.)</th><th>Amount (Rs.)</th></tr>
+    </thead>
+    <tbody>
+      <% groups.forEach(g => { %>
+      <tr class="inv-section"><td colspan="10"><%= g.key.toUpperCase() %></td></tr>
+      <% g.lines.forEach(l => { %>
+      <tr>
+        <td><%= l.sno %></td><td><%= fmtDate(l.date) %></td><td><%= l.vehNo %></td><td><%= l.dcNo %></td>
+        <td><%= l.description %></td><td><%= l.trip %></td><td><%= fmt(l.perTripCft) %></td><td><%= fmt(l.totalCft) %></td>
+        <td><%= fmt(l.rate) %></td><td class="num"><%= fmt(l.amount) %></td>
+      </tr>
+      <% }) %>
+      <tr class="inv-subtotal">
+        <td colspan="8"><%= g.key %> Total — <%= g.trips %> dumper/trip(s) · <%= fmt(g.lines.reduce((s, l) => s + l.totalCft, 0)) %> Cft</td>
+        <td></td><td class="num"><%= fmt(g.amount) %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="inv-summary">
+    <div class="inv-sumbox">
+      <h4>SUMMARY OF TOTALS</h4>
+      <% groups.forEach(g => { %>
+      <div class="sum-row"><span><%= g.key %></span><span>Rs. <%= fmt(g.amount) %></span></div>
+      <% }) %>
+    </div>
+    <div class="inv-grand">
+      <div class="grand-label">GRAND TOTAL</div>
+      <div class="grand-amount">Rs. <%= fmt(bill.total) %></div>
+      <div class="grand-words">Amount in Words: <%= words %></div>
+    </div>
+  </div>
+  <% } else { %>
+  <table class="inv-table">
+    <thead>
+      <tr><th>Sr#</th><th>Date</th><th>Veh No</th><th>DC #</th><th>Description</th><th>Trip</th><th>Gln</th><th>Qty</th><th>Rate</th><th>Amount (Rs.)</th></tr>
+    </thead>
+    <tbody>
+      <% groups.forEach(g => { %>
+      <tr class="inv-section"><td colspan="10">VEHICLE: <%= g.key %></td></tr>
+      <% g.lines.forEach(l => { %>
+      <tr>
+        <td><%= l.sno %></td><td><%= fmtDate(l.date) %></td><td><%= l.vehNo %></td><td><%= l.dcNo %></td>
+        <td>Water</td><td><%= l.trip %></td><td><%= fmt(l.gallons) %></td><td><%= fmt(l.qty) %></td>
+        <td><%= fmt(l.rate) %></td><td class="num"><%= fmt(l.amount) %></td>
+      </tr>
+      <% }) %>
+      <tr class="inv-subtotal">
+        <td colspan="5">TOTAL Trips — <%= g.key %></td><td><%= g.trips %></td>
+        <td></td><td><%= fmt(g.lines.reduce((s, l) => s + l.qty, 0)) %></td><td></td><td class="num"><%= fmt(g.amount) %></td>
+      </tr>
+      <% }) %>
+      <tr class="inv-grand-row">
+        <td colspan="5">GRAND TOTAL</td><td><%= totals.trips %></td><td></td>
+        <td><%= fmt(totals.gallons) %></td><td></td><td class="num"><%= fmt(bill.total) %></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="inv-words">Amount in Words: <%= words %></p>
+  <% } %>
+
+  <div class="inv-sign">
+    <div>
+      <p class="sign-title">Prepared By:</p>
+      <p>Name: <strong><%= company.preparedBy.name %></strong> · Designation: <%= company.preparedBy.designation %><br>
+      Date: <%= fmtDate(bill.dateIssued) %></p>
+    </div>
+    <div>
+      <p class="sign-title">Approved By:</p>
+      <p>Name: <strong><%= company.approvedBy.name %></strong> · Designation: <%= company.approvedBy.designation %><br>
+      Date: <%= fmtDate(bill.dateIssued) %></p>
+    </div>
+  </div>
+
+  <div class="inv-terms">
+    <strong>Terms &amp; Conditions:</strong> <%= company.terms %>
+  </div>
+</article>
+
+<% if (autoprint) { %><script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script><% } %>
+<%- include('../partials/footer') %>

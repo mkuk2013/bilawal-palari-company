@@ -1,0 +1,58 @@
+<%- include('../partials/header') %>
+<section class="card narrow">
+  <div class="row-between">
+    <h2>Company profile</h2>
+    <a class="btn btn-ghost" href="/admin">← Admin monitoring</a>
+  </div>
+  <form method="post" action="/admin/company" class="form">
+    <label>Company name
+      <input type="text" name="name" required value="<%= company.name %>">
+    </label>
+    <label>Tagline
+      <input type="text" name="tagline" value="<%= company.tagline %>">
+    </label>
+    <label>Office address
+      <input type="text" name="office" value="<%= company.office %>">
+    </label>
+    <div class="form-row">
+      <label>Phone 1
+        <input type="text" name="phone1" value="<%= company.phones[0] || '' %>">
+      </label>
+      <label>Phone 2
+        <input type="text" name="phone2" value="<%= company.phones[1] || '' %>">
+      </label>
+    </div>
+    <label>Invoice phone
+      <input type="text" name="invoicePhone" value="<%= company.invoicePhone %>">
+    </label>
+    <div class="form-row">
+      <label>Email
+        <input type="text" name="email" value="<%= company.email %>">
+      </label>
+      <label>NTN
+        <input type="text" name="ntn" value="<%= company.ntn %>">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Prepared By — name
+        <input type="text" name="preparedName" value="<%= company.preparedBy.name %>">
+      </label>
+      <label>Prepared By — designation
+        <input type="text" name="preparedDesignation" value="<%= company.preparedBy.designation %>">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Approved By — name
+        <input type="text" name="approvedName" value="<%= company.approvedBy.name %>">
+      </label>
+      <label>Approved By — designation
+        <input type="text" name="approvedDesignation" value="<%= company.approvedBy.designation %>">
+      </label>
+    </div>
+    <label>Terms &amp; conditions (shown on bills)
+      <textarea name="terms" rows="3"><%= company.terms %></textarea>
+    </label>
+    <button type="submit" class="btn btn-gold btn-block">Save profile</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

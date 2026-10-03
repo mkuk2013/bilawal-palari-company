@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in · Bilawal Palari &amp; Company</title>
+<meta name="theme-color" content="#0a1e46">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <img src="/logo.jpg" alt="Company logo" class="login-logo">
+    <h1><%= company.name %></h1>
+    <p class="tagline"><%= company.tagline %></p>
+    <p class="muted small">Sign in to book orders, save bills and manage the business.</p>
+    <% if (error) { %><div class="alert alert-err"><%= error %></div><% } %>
+    <form method="post" action="/login" class="form">
+      <label>Username
+        <input type="text" name="username" required autocomplete="username" placeholder="e.g. admin">
+      </label>
+      <label>Password
+        <input type="password" name="password" required autocomplete="current-password" placeholder="Your password">
+      </label>
+      <button type="submit" class="btn btn-gold btn-block">Sign in</button>
+    </form>
+    <p class="muted small">Office: <%= company.office %><br>Ph: <%= company.phones.join(' • ') %></p>
+  </div>
+  <script src="/js/app.js"></script>
+</body>
+</html>

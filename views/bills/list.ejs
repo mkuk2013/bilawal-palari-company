@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <div class="row-between">
+    <h2>Bills</h2>
+    <div class="actions-row">
+      <a class="btn btn-navy" href="/bills/new/aggregate">+ Aggregate bill</a>
+      <a class="btn btn-gold" href="/bills/new/water">+ Sweet water bill</a>
+    </div>
+  </div>
+  <form method="get" action="/bills" class="filter-row">
+    <select name="type">
+      <option value="">All types</option>
+      <option value="aggregate" <%= type === 'aggregate' ? 'selected' : '' %>>Aggregate</option>
+      <option value="water" <%= type === 'water' ? 'selected' : '' %>>Sweet Water</option>
+    </select>
+    <select name="status">
+      <option value="">All statuses</option>
+      <option value="unpaid" <%= status === 'unpaid' ? 'selected' : '' %>>Unpaid</option>
+      <option value="paid" <%= status === 'paid' ? 'selected' : '' %>>Paid</option>
+    </select>
+    <button class="btn btn-small btn-navy" type="submit">Filter</button>
+  </form>
+  <% if (!bills.length) { %><p class="muted">No bills found.</p><% } %>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Bill No</th><th>Type</th><th>Customer</th><th>Project</th><th>Date issued</th><th>Lines</th><th>Total (Rs)</th><th>Status</th><th>Saved by</th><th>Actions</th></tr></thead>
+      <tbody>
+        <% bills.forEach(b => { %>
+        <tr>
+          <td><a href="/bills/<%= b.id %>"><strong><%= b.billNo %></strong></a></td>
+          <td><span class="badge <%= b.type === 'aggregate' ? 'st-confirmed' : 'st-pending' %>"><%= b.type === 'aggregate' ? 'Aggregate' : 'Sweet Water' %></span></td>
+          <td><%= b.customerName %></td>
+          <td><%= b.project %></td>
+          <td><%= b.dateIssued %></td>
+          <td><%= b.lines.length %></td>
+          <td class="num"><strong><%= b.total.toLocaleString('en-US', {minimumFractionDigits: 2}) %></strong></td>
+          <td><span class="badge <%= b.status === 'paid' ? 'st-delivered' : 'st-cancelled' %>"><%= b.status %></span></td>
+          <td><%= b.savedBy %></td>
+          <td class="actions-cell">
+            <a class="btn btn-small btn-navy" href="/bills/<%= b.id %>">View</a>
+            <a class="btn btn-small btn-ghost" href="/bills/<%= b.id %>/print">Print</a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<%- include('../partials/footer') %>

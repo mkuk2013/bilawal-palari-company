@@ -1,0 +1,42 @@
+<%- include('../partials/header') %>
+<section class="card narrow">
+  <h2>Book an order</h2>
+  <form method="post" action="/orders" class="form" id="orderForm">
+    <label>Customer
+      <select name="customerId" id="customerId" required>
+        <% customers.forEach(c => { %><option value="<%= c.id %>" data-project="<%= c.project %>"><%= c.name %></option><% }) %>
+      </select>
+    </label>
+    <label>Site / Project
+      <input type="text" name="site" id="site" placeholder="Project / site name">
+    </label>
+    <label>Material
+      <select name="materialId" id="materialId" required>
+        <% materials.forEach(m => { %><option value="<%= m.id %>" data-rate="<%= m.rate %>" data-unit="<%= m.unit %>"><%= m.name %> (Rs <%= m.rate %>/<%= m.unit %>)</option><% }) %>
+      </select>
+    </label>
+    <label>Delivery date
+      <input type="date" name="deliveryDate" required value="<%= new Date().toISOString().slice(0,10) %>">
+    </label>
+    <label>Vehicle (dumper / tanker)
+      <select name="vehicleId" id="vehicleId">
+        <option value="">— Select vehicle —</option>
+        <% vehicles.forEach(v => { %><option value="<%= v.id %>" data-capacity="<%= v.capacity %>"><%= v.regNo %> · <%= v.type %> · <%= v.capacity.toLocaleString('en-US') %> <%= v.type === 'tanker' ? 'gal' : 'CFT' %></option><% }) %>
+      </select>
+    </label>
+    <div class="form-row">
+      <label>Trips
+        <input type="number" name="trips" id="trips" min="0" step="1" value="1" required>
+      </label>
+      <label>Per-trip Qty
+        <input type="number" name="perTripQty" id="perTripQty" min="0" step="any" required>
+      </label>
+      <label>Rate (Rs)
+        <input type="number" name="rate" id="rate" min="0" step="any" required>
+      </label>
+    </div>
+    <p class="amount-preview">Amount: <strong>Rs <span id="amountPreview">0.00</span></strong> <span class="muted small">(trips × per-trip qty × rate)</span></p>
+    <button type="submit" class="btn btn-gold btn-block">Book order</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

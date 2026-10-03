@@ -1,0 +1,59 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <div class="row-between">
+    <h2>Login accounts</h2>
+    <a class="btn btn-ghost" href="/admin">← Admin monitoring</a>
+  </div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Change role</th><th>Reset password</th><th>Account</th></tr></thead>
+    <tbody>
+      <% users.forEach(u => { %>
+      <tr>
+        <td><strong><%= u.username %></strong><% if (u.id === currentUser.id) { %> <span class="muted small">(you)</span><% } %></td>
+        <td><span class="badge <%= u.role === 'admin' ? 'st-confirmed' : 'st-pending' %>"><%= u.role.toUpperCase() %></span></td>
+        <td><%= u.active ? 'Active' : 'Deactivated' %></td>
+        <td>
+          <form method="post" action="/admin/users/<%= u.id %>/role" class="inline-form">
+            <select name="role">
+              <option value="user" <%= u.role === 'user' ? 'selected' : '' %>>User</option>
+              <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option>
+            </select>
+            <button class="btn btn-small btn-navy" type="submit">Save</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/admin/users/<%= u.id %>/reset-password" class="inline-form">
+            <input type="text" name="password" placeholder="New password" required minlength="6">
+            <button class="btn btn-small btn-ghost" type="submit">Reset</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/admin/users/<%= u.id %>/toggle-active">
+            <button class="btn btn-small <%= u.active ? 'btn-danger' : 'btn-navy' %>" type="submit"><%= u.active ? 'Deactivate' : 'Activate' %></button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card narrow">
+  <h2>Create account</h2>
+  <form method="post" action="/admin/users" class="form">
+    <label>Username
+      <input type="text" name="username" required autocomplete="off">
+    </label>
+    <label>Password (min 6 characters)
+      <input type="text" name="password" required minlength="6" autocomplete="off">
+    </label>
+    <label>Role
+      <select name="role">
+        <option value="user">User (staff)</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-gold btn-block">Create account</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

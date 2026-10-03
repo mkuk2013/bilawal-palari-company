@@ -1,0 +1,51 @@
+<%- include('../partials/header') %>
+<section class="card">
+  <h2>New sweet water bill</h2>
+  <form method="post" action="/bills/water" id="billForm" data-bill-type="water">
+    <div class="form-grid">
+      <label>Bill To (customer)
+        <select name="customerName" id="customerName">
+          <% customers.forEach(c => { %><option value="<%= c.name %>" data-project="<%= c.project %>"><%= c.name %></option><% }) %>
+        </select>
+      </label>
+      <label>Project
+        <input type="text" name="project" id="project">
+      </label>
+      <label>Billing period from
+        <input type="date" name="periodFrom" value="<%= today %>">
+      </label>
+      <label>Billing period to
+        <input type="date" name="periodTo" value="<%= today %>">
+      </label>
+      <label>PO No
+        <input type="text" name="poNo" placeholder="e.g. PO-09-2026-179840">
+      </label>
+      <label>Date issued
+        <input type="date" name="dateIssued" value="<%= today %>">
+      </label>
+    </div>
+
+    <h3>Tanker trip lines</h3>
+    <div class="table-wrap">
+      <table class="table lines-table">
+        <thead><tr><th>Date</th><th>Veh No</th><th>DC #</th><th>Trip</th><th>Gallons / Trip</th><th>Rate</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="linesBody"></tbody>
+      </table>
+    </div>
+    <div class="row-between">
+      <button type="button" class="btn btn-ghost" id="addRowBtn">+ Add line</button>
+      <p class="amount-preview">Grand Total: <strong>Rs <span id="grandTotal">0.00</span></strong></p>
+    </div>
+    <button type="submit" class="btn btn-gold btn-block">Save bill</button>
+  </form>
+</section>
+
+<datalist id="vehList">
+  <% vehicles.forEach(v => { %><option value="<%= v.regNo %>"></option><% }) %>
+</datalist>
+<script>
+  window.VEH_CAPS = <%- JSON.stringify(Object.fromEntries(vehicles.map(v => [v.regNo, v.capacity]))) %>;
+  window.WATER_RATE = <%- JSON.stringify(waterRate) %>;
+  window.DEFAULT_DATE = <%- JSON.stringify(today) %>;
+</script>
+<%- include('../partials/footer') %>

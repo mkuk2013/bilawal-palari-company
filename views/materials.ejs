@@ -1,0 +1,37 @@
+<%- include('partials/header') %>
+<%- include('partials/subtabs') %>
+<section class="card">
+  <h2><%= editing ? 'Edit material' : 'Add a material' %></h2>
+  <form method="post" action="/materials" class="form form-inline">
+    <% if (editing) { %><input type="hidden" name="id" value="<%= editing.id %>"><% } %>
+    <label>Name
+      <input type="text" name="name" required value="<%= editing ? editing.name : '' %>" placeholder="e.g. Coarse Aggregate">
+    </label>
+    <label>Unit
+      <select name="unit">
+        <option value="CFT" <%= editing && editing.unit === 'CFT' ? 'selected' : '' %>>CFT</option>
+        <option value="gallon" <%= editing && editing.unit === 'gallon' ? 'selected' : '' %>>gallon</option>
+      </select>
+    </label>
+    <label>Default rate (Rs)
+      <input type="number" name="rate" min="0" step="any" required value="<%= editing ? editing.rate : '' %>">
+    </label>
+    <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Add material' %></button>
+    <% if (editing) { %><a class="btn btn-ghost" href="/materials">Cancel</a><% } %>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Materials we supply</h2>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Material</th><th>Unit</th><th>Default Rate (Rs)</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% materials.forEach(m => { %>
+      <tr><td><strong><%= m.name %></strong></td><td>per <%= m.unit %></td><td><%= m.rate %></td>
+        <td class="actions-cell"><a class="btn btn-small btn-navy" href="/materials?edit=<%= m.id %>">Edit</a>
+        <form method="post" action="/materials/<%= m.id %>/delete" onsubmit="return confirm('Delete this material?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('partials/footer') %>
