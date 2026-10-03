@@ -1,10 +1,10 @@
 /* Bilawal Palari & Company — simple service worker.
    Static assets: cache-first. Pages: network-first with offline fallback. */
-const CACHE = 'bilawal-palari-v3';
+const CACHE = 'bilawal-palari-v4';
 const STATIC_ASSETS = [
   '/css/style.css',
   '/js/app.js',
-  '/Company%20logo.jpg',
+  '/logo.png',
   '/manifest.webmanifest',
   '/App%20icon%20192.png',
   '/App%20icon%20512.png',
