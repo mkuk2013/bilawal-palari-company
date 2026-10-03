@@ -7,30 +7,45 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// "Install App" button: the browser fires beforeinstallprompt when the app
-// is installable; only then do we reveal the on-page install buttons.
+// "Install App" button: always visible (except when already running as an
+// installed app). If the browser has offered the native install prompt
+// (beforeinstallprompt), tapping the button opens it directly; otherwise
+// the button shows the manual Chrome-menu steps, which always work.
 let deferredInstallPrompt = null;
-function showInstallButtons(show) {
+function hideInstallButtons() {
   document.querySelectorAll('.install-app-btn').forEach((b) => {
-    b.style.display = show ? '' : 'none';
+    b.style.display = 'none';
   });
+}
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  hideInstallButtons();
 }
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
-  showInstallButtons(true);
 });
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
-  showInstallButtons(false);
+  hideInstallButtons();
 });
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('.install-app-btn');
-  if (!btn || !deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  try { await deferredInstallPrompt.userChoice; } catch (err) { /* dismissed */ }
-  deferredInstallPrompt = null;
-  showInstallButtons(false);
+  if (!btn) return;
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    try { await deferredInstallPrompt.userChoice; } catch (err) { /* dismissed */ }
+    deferredInstallPrompt = null;
+    return;
+  }
+  let hint = btn.parentElement.querySelector('.install-hint');
+  if (!hint) {
+    hint = document.createElement('p');
+    hint.className = 'install-hint muted small';
+    hint.style.marginTop = '8px';
+    hint.textContent = 'To install: tap the \u22EE menu at the top-right of Chrome, then choose \u201CInstall app\u201D or \u201CAdd to Home screen\u201D. If it is not there yet, refresh the page once and try again.';
+    btn.after(hint);
+  }
+  hint.style.display = '';
 });
 
 const money = (n) =>
