@@ -15,13 +15,8 @@ const NEXT_STATUS = {
 };
 
 function visibleOrders(req) {
-  const data = db.get();
-  const me = req.session.user;
-  const all =
-    me.role === 'admin'
-      ? data.orders
-      : data.orders.filter((o) => o.createdBy === me.username);
-  return [...all].sort((a, b) => b.id - a.id);
+  // Every signed-in user sees and manages all orders (client requirement).
+  return [...db.get().orders].sort((a, b) => b.id - a.id);
 }
 
 function findOrder(req) {
@@ -39,10 +34,54 @@ router.get('/orders/new', (req, res) => {
   const data = db.get();
   res.render('orders/form', {
     title: 'Book an order',
+    order: null,
     customers: data.customers,
     materials: data.materials,
     vehicles: data.vehicles,
   });
+});
+
+router.get('/orders/:id/edit', (req, res) => {
+  const data = db.get();
+  const order = findOrder(req);
+  if (!order) return res.redirect('/orders?error=Order not found.');
+  res.render('orders/form', {
+    title: `Edit order #${order.id}`,
+    order,
+    customers: data.customers,
+    materials: data.materials,
+    vehicles: data.vehicles,
+  });
+});
+
+router.post('/orders/:id/update', (req, res) => {
+  const data = db.get();
+  const order = findOrder(req);
+  if (!order) return res.redirect('/orders?error=Order not found.');
+  const customer = data.customers.find((c) => c.id === Number(req.body.customerId));
+  const material = data.materials.find((m) => m.id === Number(req.body.materialId));
+  const vehicle = data.vehicles.find((v) => v.id === Number(req.body.vehicleId));
+  if (!customer || !material) {
+    return res.redirect(`/orders/${order.id}/edit?error=Please select a customer and a material.`);
+  }
+  const trips = Math.max(0, parseFloat(req.body.trips) || 0);
+  const perTripQty = Math.max(0, parseFloat(req.body.perTripQty) || 0);
+  const rate = Math.max(0, parseFloat(req.body.rate) || 0);
+  order.customerId = customer.id;
+  order.customerName = customer.name;
+  order.materialId = material.id;
+  order.materialName = material.name;
+  order.materialUnit = material.unit;
+  order.site = String(req.body.site || customer.project || '').trim();
+  order.deliveryDate = String(req.body.deliveryDate || order.deliveryDate);
+  order.vehicleId = vehicle ? vehicle.id : null;
+  order.vehNo = vehicle ? vehicle.regNo : String(req.body.vehNo || '').trim();
+  order.trips = trips;
+  order.perTripQty = perTripQty;
+  order.rate = rate;
+  order.amount = round2(trips * perTripQty * rate);
+  db.save();
+  res.redirect('/orders?msg=Order updated.');
 });
 
 router.post('/orders', (req, res) => {
@@ -85,9 +124,6 @@ router.post('/orders', (req, res) => {
 router.post('/orders/:id/status', (req, res) => {
   const order = findOrder(req);
   if (!order) return res.redirect('/orders?error=Order not found.');
-  if (!isOwnerOrAdmin(req, order.createdBy)) {
-    return res.redirect('/orders?error=You can only manage your own orders.');
-  }
   const next = String(req.body.status || '');
   if ((NEXT_STATUS[order.status] || []).includes(next)) {
     order.status = next;
@@ -105,9 +141,6 @@ router.post('/orders/:id/save-as-bill', (req, res) => {
   const data = db.get();
   const order = findOrder(req);
   if (!order) return res.redirect('/orders?error=Order not found.');
-  if (!isOwnerOrAdmin(req, order.createdBy)) {
-    return res.redirect('/orders?error=You can only manage your own orders.');
-  }
   if (order.billedBillId) {
     return res.redirect(`/bills/${order.billedBillId}`);
   }
@@ -182,9 +215,6 @@ router.post('/orders/:id/delete', (req, res) => {
   const data = db.get();
   const order = findOrder(req);
   if (!order) return res.redirect('/orders?error=Order not found.');
-  if (!isOwnerOrAdmin(req, order.createdBy)) {
-    return res.redirect('/orders?error=You can only manage your own orders.');
-  }
   data.orders = data.orders.filter((o) => o.id !== order.id);
   db.save();
   res.redirect('/orders?msg=Order deleted.');

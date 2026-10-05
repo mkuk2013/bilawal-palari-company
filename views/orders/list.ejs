@@ -14,7 +14,7 @@
   <div class="table-wrap">
     <table class="table">
       <thead>
-        <tr><th>Delivery</th><th>Customer</th><th>Material</th><th>Site</th><th>Vehicle</th><th>Trips</th><th>Qty/Trip</th><th>Rate</th><th>Amount (Rs)</th><th>Status</th><% if (currentUser.role === 'admin') { %><th>Booked by</th><% } %><th>Actions</th></tr>
+        <tr><th>Delivery</th><th>Customer</th><th>Material</th><th>Site</th><th>Vehicle</th><th>Trips</th><th>Qty/Trip</th><th>Rate</th><th>Amount (Rs)</th><th>Status</th><th>Booked by</th><th>Actions</th></tr>
       </thead>
       <tbody>
         <% orders.forEach(o => { %>
@@ -31,8 +31,9 @@
           <td><span class="badge st-<%= o.status.toLowerCase() %>"><%= o.status %></span>
             <% if (o.billedBillNo) { %><br><a class="small" href="/bills/<%= o.billedBillId %>">Bill <%= o.billedBillNo %></a><% } %>
           </td>
-          <% if (currentUser.role === 'admin') { %><td><%= o.createdBy %></td><% } %>
+          <td><%= o.createdBy %></td>
           <td class="actions-cell">
+            <a class="btn btn-small btn-gold" href="/orders/<%= o.id %>/edit">Edit</a>
             <% if (o.status === 'Pending') { %>
               <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Confirmed"><button class="btn btn-small btn-navy" type="submit">Confirm</button></form>
               <form method="post" action="/orders/<%= o.id %>/status"><input type="hidden" name="status" value="Cancelled"><button class="btn btn-small btn-ghost" type="submit">Cancel</button></form>
