@@ -249,3 +249,13 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   .inv-table { font-size: .72rem; }
   .inv-table-scroll { overflow: visible; }
 }
+
+/* Global bill search in the top bar */
+.top-search { margin: 0; }
+.top-search input {
+  width: 210px; max-width: 42vw; padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px;
+  background: rgba(255, 255, 255, .12); color: #fff; font-size: .85rem;
+}
+.top-search input::placeholder { color: rgba(255, 255, 255, .75); }
+@media (max-width: 640px) { .top-search input { width: 130px; } }

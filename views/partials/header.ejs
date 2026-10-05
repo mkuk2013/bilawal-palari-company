@@ -18,6 +18,9 @@
     <span><%= company.name %></span>
   </a>
   <div class="top-actions">
+    <form method="get" action="/bills" class="top-search">
+      <input type="search" name="q" placeholder="🔍 Search bill no, company, vehicle…" aria-label="Search bills">
+    </form>
     <span class="user-chip"><%= currentUser.username %> · <%= currentUser.role === 'admin' ? 'Admin' : 'User' %></span>
     <a class="btn btn-small btn-gold" href="/account/password">Password</a>
     <button type="button" class="btn btn-small btn-gold install-app-btn">&#128242; Install App</button>

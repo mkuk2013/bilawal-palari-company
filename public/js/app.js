@@ -110,7 +110,9 @@ function initCustomerProject() {
     if (opt && opt.dataset.project) project.value = opt.dataset.project;
   };
   sel.addEventListener('change', apply);
-  apply();
+  // On first load only prefill when the field is still empty, so an edited
+  // bill keeps its own saved project instead of the customer's default.
+  if (!project.value) apply();
 }
 
 /* ---------------- Bill line forms ---------------- */
@@ -177,6 +179,26 @@ function initBillForm() {
     recalc();
   }
 
+  function setVal(tr, name, v) {
+    const el = tr.querySelector(`[name="${name}"]`);
+    if (el && v !== undefined && v !== null && v !== '') el.value = v;
+  }
+
+  function fillRow(tr, line) {
+    setVal(tr, 'l_date[]', line.date);
+    setVal(tr, 'l_veh[]', line.vehNo);
+    setVal(tr, 'l_dc[]', line.dcNo);
+    setVal(tr, 'l_trip[]', line.trip);
+    if (type === 'aggregate') {
+      setVal(tr, 'l_desc[]', line.description);
+      setVal(tr, 'l_qty[]', line.perTripCft);
+    } else {
+      setVal(tr, 'l_gal[]', line.gallons);
+    }
+    // Set the rate last so it wins over the material default addRow() applied.
+    setVal(tr, 'l_rate[]', line.rate);
+  }
+
   addBtn.addEventListener('click', addRow);
   body.addEventListener('click', (e) => {
     if (e.target.classList.contains('row-del')) {
@@ -203,5 +225,14 @@ function initBillForm() {
     }
   });
 
-  addRow(); // start with one blank line
+  const existing = Array.isArray(window.EXISTING_LINES) ? window.EXISTING_LINES : null;
+  if (existing && existing.length) {
+    existing.forEach((line) => {
+      addRow();
+      fillRow(body.lastElementChild, line);
+    });
+    recalc();
+  } else {
+    addRow(); // start with one blank line
+  }
 }

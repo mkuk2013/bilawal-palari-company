@@ -1,10 +1,10 @@
 <%- include('partials/header') %>
 <%- include('partials/subtabs') %>
 <section class="card">
-  <h2><%= editing ? 'Edit customer' : 'Add a customer' %></h2>
+  <h2><%= editing ? 'Edit company' : 'Register a company' %></h2>
   <form method="post" action="/customers" class="form form-inline">
     <% if (editing) { %><input type="hidden" name="id" value="<%= editing.id %>"><% } %>
-    <label>Customer name
+    <label>Company name
       <input type="text" name="name" required value="<%= editing ? editing.name : '' %>" placeholder="e.g. U.TOPIA CONSTRUCTION">
     </label>
     <label>Project / Site
@@ -13,22 +13,26 @@
     <label>Phone
       <input type="text" name="phone" value="<%= editing ? editing.phone : '' %>">
     </label>
-    <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Add customer' %></button>
+    <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Register company' %></button>
     <% if (editing) { %><a class="btn btn-ghost" href="/customers">Cancel</a><% } %>
   </form>
 </section>
 
 <section class="card">
-  <h2>Customers</h2>
+  <h2>Companies (<%= customers.length %>)</h2>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Customer</th><th>Project</th><th>Phone</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Company</th><th>Project</th><th>Phone</th><th>Bills</th><th>Bills total (Rs)</th><th>Actions</th></tr></thead>
     <tbody>
-      <% customers.forEach(c => { %>
+      <% customers.forEach(c => { const st = billStats[String(c.name || '').trim().toLowerCase()] || { count: 0, total: 0 }; %>
       <tr><td><strong><%= c.name %></strong></td><td><%= c.project %></td><td><%= c.phone || '—' %></td>
-        <td class="actions-cell"><a class="btn btn-small btn-navy" href="/customers?edit=<%= c.id %>">Edit</a>
-        <form method="post" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Delete this customer?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
+        <td><%= st.count %></td>
+        <td class="num"><%= st.total.toLocaleString('en-US', {minimumFractionDigits: 2}) %></td>
+        <td class="actions-cell"><a class="btn btn-small btn-gold" href="/bills?company=<%= encodeURIComponent(c.name) %>">View bills</a>
+        <a class="btn btn-small btn-navy" href="/customers?edit=<%= c.id %>">Edit</a>
+        <form method="post" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Delete this company? Its bills will stay saved.')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
       <% }) %>
     </tbody>
   </table></div>
+  <p class="muted small">Har company ke bills usi ke naam ke neeche save hotay hain — "View bills" dabane se sirf usi company ke bills nazar ayenge.</p>
 </section>
 <%- include('partials/footer') %>

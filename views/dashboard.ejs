@@ -16,7 +16,7 @@
   <div class="card stat"><span class="stat-num">Rs <%= stats.billsTotal.toLocaleString('en-US') %></span><span class="stat-label">All bills total</span></div>
   <div class="card stat"><span class="stat-num">Rs <%= stats.unpaidTotal.toLocaleString('en-US') %></span><span class="stat-label">Unpaid bills</span></div>
   <div class="card stat"><span class="stat-num"><%= stats.vehicles %></span><span class="stat-label">Vehicles in fleet</span></div>
-  <div class="card stat"><span class="stat-num"><%= stats.customers %></span><span class="stat-label">Customers</span></div>
+  <div class="card stat"><span class="stat-num"><%= stats.customers %></span><span class="stat-label">Companies</span></div>
 </section>
 
 <section class="card">
@@ -25,7 +25,7 @@
     <a class="btn btn-gold" href="/orders/new">+ Book an order</a>
     <a class="btn btn-navy" href="/bills/new/aggregate">+ Aggregate bill</a>
     <a class="btn btn-navy" href="/bills/new/water">+ Sweet water bill</a>
-    <a class="btn btn-ghost" href="/customers">Customers</a>
+    <a class="btn btn-ghost" href="/customers">Companies</a>
     <% if (currentUser.role === 'admin') { %><a class="btn btn-ghost" href="/admin">Admin monitoring</a><% } %>
   </div>
 </section>
