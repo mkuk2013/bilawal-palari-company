@@ -189,6 +189,11 @@
     render(out.lines, type, out.skipped);
   }
 
+  function rowsFromWorkbook(wb) {
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+  }
+
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
@@ -198,15 +203,37 @@
       return;
     }
     file.arrayBuffer().then(function (buf) {
-      var wb = XLSX.read(buf, { type: 'array', cellDates: true });
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      lastRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+      lastRows = rowsFromWorkbook(XLSX.read(buf, { type: 'array', cellDates: true }));
       process();
     }).catch(function () {
       msg.style.display = '';
       msg.textContent = 'File parhi nahi ja saki — sahi .xlsx ya .csv file upload karein.';
     });
   });
+
+  var pasteBtn = document.getElementById('impPasteBtn');
+  if (pasteBtn) {
+    pasteBtn.addEventListener('click', function () {
+      var text = (document.getElementById('impPaste').value || '').trim();
+      if (!text) {
+        msg.style.display = '';
+        msg.textContent = 'Pehle box mein Excel se copy ki hui lines paste karein.';
+        return;
+      }
+      if (!window.XLSX) {
+        msg.style.display = '';
+        msg.textContent = 'Excel parhne wali library load nahi ho saki — internet check karke page refresh karein.';
+        return;
+      }
+      try {
+        lastRows = rowsFromWorkbook(XLSX.read(text, { type: 'string', cellDates: true }));
+        process();
+      } catch (e) {
+        msg.style.display = '';
+        msg.textContent = 'Paste kiya gaya text parha nahi ja saka.';
+      }
+    });
+  }
   typeSel.addEventListener('change', process);
 
   var bm = document.getElementById('impBillingMonth');

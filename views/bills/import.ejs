@@ -21,6 +21,13 @@
     <a href="/bills/import/template?type=water">Sweet water template (CSV)</a>
   </p>
   <p id="impMsg" class="flash flash-error" style="display:none"></p>
+  <hr style="margin:18px 0;border:none;border-top:1px solid #e5e7eb">
+  <h3>📋 Ya Excel se copy-paste kar dein</h3>
+  <p class="muted">File banane ki bhi zaroorat nahi — Excel ya Google Sheets mein apni lines select karke <strong>Copy</strong> karein, yahan box mein <strong>Paste</strong> kar dein, lines khud ban jayengi.</p>
+  <label style="display:block">Yahan paste karein
+    <textarea id="impPaste" rows="7" style="width:100%" placeholder="Date	Vehicle No	DC No	Description	Trips	Quantity	Rate&#10;2026-09-01	TAM-143	101	Coarse Aggregate	2	850	57.79"></textarea>
+  </label>
+  <button type="button" id="impPasteBtn" class="btn btn-gold btn-block" style="margin-top:10px">Paste se preview dekhein</button>
 </section>
 
 <section class="card" id="impPreviewCard" style="display:none">
