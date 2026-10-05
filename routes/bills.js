@@ -221,13 +221,35 @@ router.post('/bills/water', (req, res) => {
   res.redirect(`/bills/${bill.id}?msg=Bill ${bill.billNo} saved.`);
 });
 
+/* ---- Excel import: template download + import page (parsing happens in the browser) ---- */
+router.get('/bills/import/template', (req, res) => {
+  const type = req.query.type === 'water' ? 'water' : 'aggregate';
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="bill-import-template-${type}.csv"`);
+  if (type === 'aggregate') {
+    return res.send("Date,Vehicle No,DC No,Description,Trips,Quantity (CFT per trip),Rate\r\n2026-09-01,TAM-143,101,Coarse Aggregate,2,850,57.79\r\n2026-09-01,TAC-380,102,Salikua Sand,1,1118,46.84\r\n");
+  }
+  return res.send("Date,Vehicle No,DC No,Trips,Gallons (per trip),Rate\r\n2026-09-01,JV-2180,201,1,16000,2.95\r\n2026-09-01,TKN-429,202,2,6000,2.95\r\n");
+});
+
+router.get('/bills/import', (req, res) => {
+  const data = db.get();
+  const water = data.materials.find((m) => m.unit === 'gallon');
+  res.render('bills/import', {
+    title: 'Excel import',
+    customers: data.customers,
+    vehicles: data.vehicles,
+    materials: data.materials,
+    waterRate: water ? water.rate : 2.95,
+    nextBillNo: nextAutoBillNo(data),
+    today: todayISO(),
+  });
+});
+
 router.get('/bills/:id/edit', (req, res) => {
   const data = db.get();
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
-  if (!isOwnerOrAdmin(req, bill.savedBy)) {
-    return res.redirect(`/bills/${bill.id}?error=Only the person who saved this bill or an admin can edit it.`);
-  }
   if (bill.type === 'aggregate') {
     return res.render('bills/form-aggregate', {
       title: `Edit bill ${bill.billNo}`,
@@ -255,9 +277,6 @@ router.post('/bills/:id/update', (req, res) => {
   const data = db.get();
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
-  if (!isOwnerOrAdmin(req, bill.savedBy)) {
-    return res.redirect(`/bills/${bill.id}?error=Only the person who saved this bill or an admin can edit it.`);
-  }
   const lines = bill.type === 'aggregate' ? parseAggregateLines(req.body) : parseWaterLines(req.body);
   if (!lines.length) return res.redirect(`/bills/${bill.id}/edit?error=Add at least one bill line.`);
   const resolved = resolveBillNo(data, req.body.billNo, bill.id);
@@ -336,9 +355,6 @@ router.get('/bills/:id/print', (req, res) => showBill(req, res, true));
 router.post('/bills/:id/toggle-paid', (req, res) => {
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
-  if (!isOwnerOrAdmin(req, bill.savedBy)) {
-    return res.redirect(`/bills/${bill.id}?error=Only the person who saved this bill or an admin can change its status.`);
-  }
   bill.status = bill.status === 'paid' ? 'unpaid' : 'paid';
   db.save();
   res.redirect(`/bills/${bill.id}?msg=Bill marked ${bill.status}.`);
@@ -348,9 +364,6 @@ router.post('/bills/:id/delete', (req, res) => {
   const data = db.get();
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
-  if (!isOwnerOrAdmin(req, bill.savedBy)) {
-    return res.redirect(`/bills/${bill.id}?error=You cannot delete this bill.`);
-  }
   data.orders.forEach((o) => {
     if (o.billedBillId === bill.id) {
       o.billedBillId = null;

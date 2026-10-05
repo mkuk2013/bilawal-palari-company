@@ -5,6 +5,7 @@
     <div class="actions-row">
       <a class="btn btn-navy" href="/bills/new/aggregate">+ Aggregate bill</a>
       <a class="btn btn-gold" href="/bills/new/water">+ Sweet water bill</a>
+      <a class="btn btn-ghost" href="/bills/import">📥 Excel import</a>
     </div>
   </div>
   <form method="get" action="/bills" class="filter-row">
@@ -45,7 +46,7 @@
           <td><%= b.savedBy %></td>
           <td class="actions-cell">
             <a class="btn btn-small btn-navy" href="/bills/<%= b.id %>">View</a>
-            <% if (currentUser && (currentUser.role === 'admin' || currentUser.username === b.savedBy)) { %><a class="btn btn-small btn-gold" href="/bills/<%= b.id %>/edit">Edit</a><% } %>
+            <a class="btn btn-small btn-gold" href="/bills/<%= b.id %>/edit">Edit</a>
             <a class="btn btn-small btn-ghost" href="/bills/<%= b.id %>/print">Print</a>
           </td>
         </tr>
