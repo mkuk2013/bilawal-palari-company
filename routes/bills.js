@@ -29,34 +29,9 @@ function zipLines(body, keys) {
   return rows;
 }
 
-function findBill(req) {
-  return db.get().bills.find((b) => b.id === Number(req.params.id));
-}
-
-router.get('/bills', (req, res) => {
-  let bills = [...db.get().bills].sort((a, b) => b.id - a.id);
-  const type = req.query.type || '';
-  const status = req.query.status || '';
-  if (type) bills = bills.filter((b) => b.type === type);
-  if (status) bills = bills.filter((b) => b.status === status);
-  res.render('bills/list', { title: 'Bills', bills, type, status });
-});
-
-router.get('/bills/new/aggregate', (req, res) => {
-  const data = db.get();
-  res.render('bills/form-aggregate', {
-    title: 'New aggregate bill',
-    customers: data.customers,
-    materials: data.materials.filter((m) => m.unit === 'CFT'),
-    vehicles: data.vehicles,
-    today: todayISO(),
-  });
-});
-
-router.post('/bills/aggregate', (req, res) => {
-  const data = db.get();
-  const rows = zipLines(req.body, ['l_date', 'l_veh', 'l_dc', 'l_desc', 'l_trip', 'l_qty', 'l_rate']);
-  const lines = rows.map((r) => {
+function parseAggregateLines(body) {
+  const rows = zipLines(body, ['l_date', 'l_veh', 'l_dc', 'l_desc', 'l_trip', 'l_qty', 'l_rate']);
+  return rows.map((r) => {
     const trip = num(r.l_trip) || 1;
     const perTripCft = num(r.l_qty);
     const totalCft = round2(trip * perTripCft);
@@ -73,11 +48,119 @@ router.post('/bills/aggregate', (req, res) => {
       amount: round2(totalCft * rate),
     };
   });
+}
+
+function parseWaterLines(body) {
+  const rows = zipLines(body, ['l_date', 'l_veh', 'l_dc', 'l_trip', 'l_gal', 'l_rate']);
+  return rows.map((r) => {
+    const trip = num(r.l_trip) || 1;
+    const gallons = num(r.l_gal);
+    const qty = round2(trip * gallons);
+    const rate = num(r.l_rate);
+    return {
+      date: String(r.l_date || ''),
+      vehNo: String(r.l_veh || '').trim(),
+      dcNo: String(r.l_dc || '').trim(),
+      trip,
+      gallons,
+      qty,
+      rate,
+      amount: round2(qty * rate),
+    };
+  });
+}
+
+/**
+ * Decide the bill number for a save.
+ * - Empty input  -> { billNo: null } meaning "assign the next auto number".
+ * - Custom input -> used as-is, unless another bill already has it.
+ * `exceptId` is the bill being edited (its own current number is allowed).
+ */
+function resolveBillNo(data, raw, exceptId) {
+  const wanted = String(raw || '').trim();
+  if (!wanted) return { billNo: null };
+  const clash = data.bills.some(
+    (b) => b.id !== exceptId && String(b.billNo || '').trim().toLowerCase() === wanted.toLowerCase()
+  );
+  if (clash) {
+    return { error: `Bill number "${wanted}" is already used by another bill. Please choose a different number.` };
+  }
+  return { billNo: wanted };
+}
+
+function findBill(req) {
+  return db.get().bills.find((b) => b.id === Number(req.params.id));
+}
+
+function nextAutoBillNo(data) {
+  return db.billNoFor((data.seq.bill || 0) + 1);
+}
+
+router.get('/bills', (req, res) => {
+  const data = db.get();
+  let bills = [...data.bills].sort((a, b) => b.id - a.id);
+  const type = req.query.type || '';
+  const status = req.query.status || '';
+  const company = String(req.query.company || '').trim();
+  const q = String(req.query.q || '').trim();
+  if (type) bills = bills.filter((b) => b.type === type);
+  if (status) bills = bills.filter((b) => b.status === status);
+  if (company) {
+    const target = company.toLowerCase();
+    bills = bills.filter((b) => String(b.customerName || '').trim().toLowerCase() === target);
+  }
+  if (q) {
+    const needle = q.toLowerCase();
+    const inBill = (b) =>
+      [b.billNo, b.customerName, b.project, b.poNo, b.billingMonth, b.dateIssued]
+        .some((v) => String(v || '').toLowerCase().includes(needle)) ||
+      (b.lines || []).some((l) =>
+        [l.vehNo, l.dcNo, l.description].some((v) => String(v || '').toLowerCase().includes(needle))
+      );
+    bills = bills.filter(inBill);
+  }
+  // Company list for the filter: registered companies first, then any name
+  // that appears on a bill but is not registered (older bills stay findable).
+  const names = [];
+  const seen = new Set();
+  const addName = (n) => {
+    const name = String(n || '').trim();
+    const key = name.toLowerCase();
+    if (name && !seen.has(key)) {
+      seen.add(key);
+      names.push(name);
+    }
+  };
+  data.customers.forEach((c) => addName(c.name));
+  data.bills.forEach((b) => addName(b.customerName));
+  names.sort((a, b) => a.localeCompare(b));
+  const filteredTotal = round2(bills.reduce((s, b) => s + (Number(b.total) || 0), 0));
+  res.render('bills/list', { title: 'Bills', bills, type, status, company, q, companies: names, filteredTotal });
+});
+
+router.get('/bills/new/aggregate', (req, res) => {
+  const data = db.get();
+  res.render('bills/form-aggregate', {
+    title: 'New aggregate bill',
+    bill: null,
+    nextBillNo: nextAutoBillNo(data),
+    customers: data.customers,
+    materials: data.materials.filter((m) => m.unit === 'CFT'),
+    vehicles: data.vehicles,
+    today: todayISO(),
+  });
+});
+
+router.post('/bills/aggregate', (req, res) => {
+  const data = db.get();
+  const lines = parseAggregateLines(req.body);
   if (!lines.length) return res.redirect('/bills/new/aggregate?error=Add at least one bill line.');
+  const resolved = resolveBillNo(data, req.body.billNo, null);
+  if (resolved.error) return res.redirect('/bills/new/aggregate?error=' + encodeURIComponent(resolved.error));
   const seq = db.nextBillSeq();
   const bill = {
     id: seq,
-    billNo: db.billNoFor(seq),
+    billNo: resolved.billNo || db.billNoFor(seq),
     type: 'aggregate',
     customerName: String(req.body.customerName || '').trim(),
     project: String(req.body.project || '').trim(),
@@ -100,6 +183,8 @@ router.get('/bills/new/water', (req, res) => {
   const water = data.materials.find((m) => m.unit === 'gallon');
   res.render('bills/form-water', {
     title: 'New sweet water bill',
+    bill: null,
+    nextBillNo: nextAutoBillNo(data),
     customers: data.customers,
     vehicles: data.vehicles.filter((v) => v.type === 'tanker'),
     waterRate: water ? water.rate : 2.95,
@@ -109,28 +194,14 @@ router.get('/bills/new/water', (req, res) => {
 
 router.post('/bills/water', (req, res) => {
   const data = db.get();
-  const rows = zipLines(req.body, ['l_date', 'l_veh', 'l_dc', 'l_trip', 'l_gal', 'l_rate']);
-  const lines = rows.map((r) => {
-    const trip = num(r.l_trip) || 1;
-    const gallons = num(r.l_gal);
-    const qty = round2(trip * gallons);
-    const rate = num(r.l_rate);
-    return {
-      date: String(r.l_date || ''),
-      vehNo: String(r.l_veh || '').trim(),
-      dcNo: String(r.l_dc || '').trim(),
-      trip,
-      gallons,
-      qty,
-      rate,
-      amount: round2(qty * rate),
-    };
-  });
+  const lines = parseWaterLines(req.body);
   if (!lines.length) return res.redirect('/bills/new/water?error=Add at least one bill line.');
+  const resolved = resolveBillNo(data, req.body.billNo, null);
+  if (resolved.error) return res.redirect('/bills/new/water?error=' + encodeURIComponent(resolved.error));
   const seq = db.nextBillSeq();
   const bill = {
     id: seq,
-    billNo: db.billNoFor(seq),
+    billNo: resolved.billNo || db.billNoFor(seq),
     type: 'water',
     customerName: String(req.body.customerName || '').trim(),
     project: String(req.body.project || '').trim(),
@@ -148,6 +219,75 @@ router.post('/bills/water', (req, res) => {
   data.bills.push(bill);
   db.save();
   res.redirect(`/bills/${bill.id}?msg=Bill ${bill.billNo} saved.`);
+});
+
+router.get('/bills/:id/edit', (req, res) => {
+  const data = db.get();
+  const bill = findBill(req);
+  if (!bill) return res.redirect('/bills?error=Bill not found.');
+  if (!isOwnerOrAdmin(req, bill.savedBy)) {
+    return res.redirect(`/bills/${bill.id}?error=Only the person who saved this bill or an admin can edit it.`);
+  }
+  if (bill.type === 'aggregate') {
+    return res.render('bills/form-aggregate', {
+      title: `Edit bill ${bill.billNo}`,
+      bill,
+      nextBillNo: bill.billNo,
+      customers: data.customers,
+      materials: data.materials.filter((m) => m.unit === 'CFT'),
+      vehicles: data.vehicles,
+      today: todayISO(),
+    });
+  }
+  const water = data.materials.find((m) => m.unit === 'gallon');
+  return res.render('bills/form-water', {
+    title: `Edit bill ${bill.billNo}`,
+    bill,
+    nextBillNo: bill.billNo,
+    customers: data.customers,
+    vehicles: data.vehicles.filter((v) => v.type === 'tanker'),
+    waterRate: water ? water.rate : 2.95,
+    today: todayISO(),
+  });
+});
+
+router.post('/bills/:id/update', (req, res) => {
+  const data = db.get();
+  const bill = findBill(req);
+  if (!bill) return res.redirect('/bills?error=Bill not found.');
+  if (!isOwnerOrAdmin(req, bill.savedBy)) {
+    return res.redirect(`/bills/${bill.id}?error=Only the person who saved this bill or an admin can edit it.`);
+  }
+  const lines = bill.type === 'aggregate' ? parseAggregateLines(req.body) : parseWaterLines(req.body);
+  if (!lines.length) return res.redirect(`/bills/${bill.id}/edit?error=Add at least one bill line.`);
+  const resolved = resolveBillNo(data, req.body.billNo, bill.id);
+  if (resolved.error) return res.redirect(`/bills/${bill.id}/edit?error=` + encodeURIComponent(resolved.error));
+
+  const oldBillNo = bill.billNo;
+  bill.billNo = resolved.billNo || oldBillNo;
+  bill.customerName = String(req.body.customerName || '').trim();
+  bill.project = String(req.body.project || '').trim();
+  bill.dateIssued = String(req.body.dateIssued || bill.dateIssued || todayISO());
+  if (bill.type === 'aggregate') {
+    bill.billingMonth = String(req.body.billingMonth || '').trim();
+  } else {
+    bill.periodFrom = String(req.body.periodFrom || '');
+    bill.periodTo = String(req.body.periodTo || '');
+    bill.poNo = String(req.body.poNo || '').trim();
+  }
+  bill.lines = lines;
+  bill.total = round2(lines.reduce((s, l) => s + l.amount, 0));
+  bill.editedAt = todayISO();
+  bill.editedBy = req.session.user.username;
+
+  // Keep a linked order's reference in sync when the number changes.
+  if (bill.billNo !== oldBillNo) {
+    data.orders.forEach((o) => {
+      if (o.billedBillId === bill.id) o.billedBillNo = bill.billNo;
+    });
+  }
+  db.save();
+  res.redirect(`/bills/${bill.id}?msg=Bill ${bill.billNo} updated.`);
 });
 
 /** Group aggregate lines by material, water lines by vehicle, preserving first-seen order. */
@@ -209,7 +349,7 @@ router.post('/bills/:id/delete', (req, res) => {
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
   if (!isOwnerOrAdmin(req, bill.savedBy)) {
-    return res.redirect('/bills?error=You cannot delete this bill.');
+    return res.redirect(`/bills/${bill.id}?error=You cannot delete this bill.`);
   }
   data.orders.forEach((o) => {
     if (o.billedBillId === bill.id) {

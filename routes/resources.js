@@ -81,7 +81,15 @@ router.get('/customers', (req, res) => {
   const editing = req.query.edit
     ? data.customers.find((c) => c.id === Number(req.query.edit)) || null
     : null;
-  res.render('customers', { title: 'Customers', customers: data.customers, editing });
+  // Bill count + total per company, so each company's billing is visible at a glance.
+  const billStats = {};
+  data.bills.forEach((b) => {
+    const key = String(b.customerName || '').trim().toLowerCase();
+    if (!billStats[key]) billStats[key] = { count: 0, total: 0 };
+    billStats[key].count += 1;
+    billStats[key].total += Number(b.total) || 0;
+  });
+  res.render('customers', { title: 'Companies', customers: data.customers, editing, billStats });
 });
 
 router.post('/customers', (req, res) => {

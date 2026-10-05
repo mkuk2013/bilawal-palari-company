@@ -8,6 +8,10 @@
     </div>
   </div>
   <form method="get" action="/bills" class="filter-row">
+    <select name="company">
+      <option value="">All companies</option>
+      <% companies.forEach(n => { %><option value="<%= n %>" <%= company === n ? 'selected' : '' %>><%= n %></option><% }) %>
+    </select>
     <select name="type">
       <option value="">All types</option>
       <option value="aggregate" <%= type === 'aggregate' ? 'selected' : '' %>>Aggregate</option>
@@ -18,12 +22,15 @@
       <option value="unpaid" <%= status === 'unpaid' ? 'selected' : '' %>>Unpaid</option>
       <option value="paid" <%= status === 'paid' ? 'selected' : '' %>>Paid</option>
     </select>
-    <button class="btn btn-small btn-navy" type="submit">Filter</button>
+    <input type="search" name="q" value="<%= q %>" placeholder="Search bill no, vehicle, DC no, PO no…">
+    <button class="btn btn-small btn-navy" type="submit">Filter / Search</button>
+    <% if (type || status || company || q) { %><a class="btn btn-small btn-ghost" href="/bills">Clear</a><% } %>
   </form>
+  <% if (type || status || company || q) { %><p class="muted"><strong><%= bills.length %></strong> bill(s) found<% if (company) { %> for <strong><%= company %></strong><% } %> — Total: <strong>Rs <%= filteredTotal.toLocaleString('en-US', {minimumFractionDigits: 2}) %></strong></p><% } %>
   <% if (!bills.length) { %><p class="muted">No bills found.</p><% } %>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Bill No</th><th>Type</th><th>Customer</th><th>Project</th><th>Date issued</th><th>Lines</th><th>Total (Rs)</th><th>Status</th><th>Saved by</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Bill No</th><th>Type</th><th>Company</th><th>Project</th><th>Date issued</th><th>Lines</th><th>Total (Rs)</th><th>Status</th><th>Saved by</th><th>Actions</th></tr></thead>
       <tbody>
         <% bills.forEach(b => { %>
         <tr>
@@ -38,6 +45,7 @@
           <td><%= b.savedBy %></td>
           <td class="actions-cell">
             <a class="btn btn-small btn-navy" href="/bills/<%= b.id %>">View</a>
+            <% if (currentUser && (currentUser.role === 'admin' || currentUser.username === b.savedBy)) { %><a class="btn btn-small btn-gold" href="/bills/<%= b.id %>/edit">Edit</a><% } %>
             <a class="btn btn-small btn-ghost" href="/bills/<%= b.id %>/print">Print</a>
           </td>
         </tr>

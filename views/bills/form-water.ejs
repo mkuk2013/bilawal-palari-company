@@ -1,27 +1,32 @@
 <%- include('../partials/header') %>
 <section class="card">
-  <h2>New sweet water bill</h2>
-  <form method="post" action="/bills/water" id="billForm" data-bill-type="water">
+  <h2><%= bill ? 'Edit bill ' + bill.billNo : 'New sweet water bill' %></h2>
+  <form method="post" action="<%= bill ? '/bills/' + bill.id + '/update' : '/bills/water' %>" id="billForm" data-bill-type="water">
     <div class="form-grid">
+      <label>Bill No
+        <input type="text" name="billNo" value="<%= bill ? bill.billNo : nextBillNo %>">
+        <small class="muted">Auto number is filled in — change it to set your own, or clear it to auto-generate.</small>
+      </label>
       <label>Bill To (customer)
         <select name="customerName" id="customerName">
-          <% customers.forEach(c => { %><option value="<%= c.name %>" data-project="<%= c.project %>"><%= c.name %></option><% }) %>
+          <% customers.forEach(c => { %><option value="<%= c.name %>" data-project="<%= c.project %>" <%= bill && bill.customerName === c.name ? 'selected' : '' %>><%= c.name %></option><% }) %>
+          <% if (bill && !customers.some(c => c.name === bill.customerName)) { %><option value="<%= bill.customerName %>" selected><%= bill.customerName %></option><% } %>
         </select>
       </label>
       <label>Project
-        <input type="text" name="project" id="project">
+        <input type="text" name="project" id="project" value="<%= bill ? bill.project : '' %>">
       </label>
       <label>Billing period from
-        <input type="date" name="periodFrom" value="<%= today %>">
+        <input type="date" name="periodFrom" value="<%= bill ? bill.periodFrom : today %>">
       </label>
       <label>Billing period to
-        <input type="date" name="periodTo" value="<%= today %>">
+        <input type="date" name="periodTo" value="<%= bill ? bill.periodTo : today %>">
       </label>
       <label>PO No
-        <input type="text" name="poNo" placeholder="e.g. PO-09-2026-179840">
+        <input type="text" name="poNo" placeholder="e.g. PO-09-2026-179840" value="<%= bill ? (bill.poNo || '') : '' %>">
       </label>
       <label>Date issued
-        <input type="date" name="dateIssued" value="<%= today %>">
+        <input type="date" name="dateIssued" value="<%= bill ? bill.dateIssued : today %>">
       </label>
     </div>
 
@@ -36,7 +41,7 @@
       <button type="button" class="btn btn-ghost" id="addRowBtn">+ Add line</button>
       <p class="amount-preview">Grand Total: <strong>Rs <span id="grandTotal">0.00</span></strong></p>
     </div>
-    <button type="submit" class="btn btn-gold btn-block">Save bill</button>
+    <button type="submit" class="btn btn-gold btn-block"><%= bill ? 'Update bill' : 'Save bill' %></button>
   </form>
 </section>
 
@@ -47,5 +52,6 @@
   window.VEH_CAPS = <%- JSON.stringify(Object.fromEntries(vehicles.map(v => [v.regNo, v.capacity]))) %>;
   window.WATER_RATE = <%- JSON.stringify(waterRate) %>;
   window.DEFAULT_DATE = <%- JSON.stringify(today) %>;
+  window.EXISTING_LINES = <%- JSON.stringify(bill ? bill.lines : null) %>;
 </script>
 <%- include('../partials/footer') %>

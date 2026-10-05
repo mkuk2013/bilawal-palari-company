@@ -2,6 +2,9 @@
 <div class="actions-row no-print bill-actions">
   <a class="btn btn-ghost" href="/bills">← All bills</a>
   <button class="btn btn-gold" onclick="window.print()">🖨 Print bill</button>
+  <% if (currentUser && (currentUser.role === 'admin' || currentUser.username === bill.savedBy)) { %>
+  <a class="btn btn-navy" href="/bills/<%= bill.id %>/edit">✏️ Edit bill</a>
+  <% } %>
   <form method="post" action="/bills/<%= bill.id %>/toggle-paid">
     <button class="btn btn-navy" type="submit"><%= bill.status === 'paid' ? 'Mark unpaid' : 'Mark paid' %></button>
   </form>
