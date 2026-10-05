@@ -86,7 +86,7 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 .btn-block { display: block; width: 100%; }
 .form label { display: block; font-size: .88rem; font-weight: 600; margin-bottom: 12px; color: var(--navy); }
 .form input, .form select, .form textarea,
-.filter-row select, .inline-form input, .inline-form select {
+.filter-row select, .filter-row input, .inline-form input, .inline-form select {
   width: 100%; margin-top: 5px; padding: 10px; border: 1px solid #cfd4da; border-radius: 10px;
   font-size: .95rem; font-weight: 400; color: var(--ink); background: #fff;
 }
@@ -253,9 +253,24 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 /* Global bill search in the top bar */
 .top-search { margin: 0; }
 .top-search input {
-  width: 210px; max-width: 42vw; padding: 7px 12px;
+  width: 210px; padding: 7px 12px;
   border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px;
   background: rgba(255, 255, 255, .12); color: #fff; font-size: .85rem;
 }
 .top-search input::placeholder { color: rgba(255, 255, 255, .75); }
-@media (max-width: 640px) { .top-search input { width: 130px; } }
+.filter-row input { width: auto; margin-top: 0; padding: 7px 10px; flex: 1 1 170px; }
+
+/* ---------- Mobile layout fixes ---------- */
+@media (max-width: 640px) {
+  /* Top bar wraps: brand on the first row, search on its own full-width
+     row, then the action buttons — nothing gets squeezed or cut off. */
+  .topbar { flex-wrap: wrap; }
+  .brand { flex: 1 1 auto; }
+  .top-actions { flex: 1 1 100%; flex-wrap: wrap; margin-top: 8px; }
+  .top-search { flex: 1 1 100%; }
+  .top-search input { width: 100%; max-width: none; padding: 9px 14px; font-size: .92rem; }
+  /* Filter/search rows: every control takes a comfortable share of a row. */
+  .filter-row > * { flex: 1 1 150px; }
+  .filter-row select, .filter-row input { width: 100%; }
+  .filter-row .btn { flex: 1 1 auto; }
+}
