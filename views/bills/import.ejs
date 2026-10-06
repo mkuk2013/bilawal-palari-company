@@ -14,7 +14,9 @@
     </label>
   </div>
   <p class="muted small">
-    Columns is tartib/namon par hon: <strong>Date, Vehicle No, DC No, Description, Trips, Quantity, Rate</strong> (header ho ya na ho — dono chalega).
+    File mein <strong>kai sheets</strong> hon to har sheet ka <strong>alag bill</strong> preview banega — tables aur data apni apni jagah rahenge, mix nahi honge.
+    Bill No, Project, PO No aur billing period sheet se khud parh liye jayenge.<br>
+    Columns ke naam pehchane jate hain (Date, Vehicle No, DC No, Description, Trips, Gln/Quantity, Rate) — tartib jo bhi ho, header jahan bhi ho.
     Quantity khaali ho to vehicle ki capacity khud lag jayegi, Rate khaali ho to material ka rate khud lag jayega.<br>
     Sample templates:
     <a href="/bills/import/template?type=aggregate">Aggregate template (CSV)</a> ·
@@ -30,58 +32,14 @@
   <button type="button" id="impPasteBtn" class="btn btn-gold btn-block" style="margin-top:10px">Paste se preview dekhein</button>
 </section>
 
-<section class="card" id="impPreviewCard" style="display:none">
-  <h2 id="impPreviewTitle">Preview</h2>
-  <p class="muted" id="impPreviewNote"></p>
-  <form method="post" id="impForm" action="/bills/aggregate">
-    <div class="form-grid">
-      <label>Bill No
-        <input type="text" name="billNo" value="<%= nextBillNo %>">
-        <small class="muted">Auto number bhara hai — badal sakte hain, ya khaali kar dein to auto lagega.</small>
-      </label>
-      <label>Bill To (customer)
-        <select name="customerName" id="customerName">
-          <% customers.forEach(c => { %><option value="<%= c.name %>" data-project="<%= c.project %>"><%= c.name %></option><% }) %>
-        </select>
-      </label>
-      <label>Project
-        <input type="text" name="project" id="project" value="">
-      </label>
-      <label id="impAggFields">Billing month
-        <input type="text" name="billingMonth" id="impBillingMonth" value="">
-      </label>
-      <span id="impWaterFields" style="display:contents" hidden>
-        <label>Billing period from
-          <input type="date" name="periodFrom" value="<%= today %>">
-        </label>
-        <label>Billing period to
-          <input type="date" name="periodTo" value="<%= today %>">
-        </label>
-        <label>PO No
-          <input type="text" name="poNo" value="">
-        </label>
-      </span>
-      <label>Date issued
-        <input type="date" name="dateIssued" value="<%= today %>">
-      </label>
-    </div>
-
-    <h3>Trip lines</h3>
-    <div class="table-wrap">
-      <table class="table lines-table">
-        <thead id="impHead"></thead>
-        <tbody id="impLines"></tbody>
-      </table>
-    </div>
-    <p class="amount-preview">Estimated total: <strong>Rs <span id="impTotal">0.00</span></strong> <span class="muted small">(final total save hote waqt calculate hoga)</span></p>
-    <button type="submit" class="btn btn-gold btn-block">Save bill</button>
-  </form>
-</section>
+<div id="impPreviews"></div>
 
 <script>
   window.IMP_VEHICLES = <%- JSON.stringify(vehicles.map(v => ({ regNo: v.regNo, capacity: v.capacity }))) %>;
   window.IMP_MATERIALS = <%- JSON.stringify(materials.map(m => ({ name: m.name, rate: m.rate, unit: m.unit }))) %>;
+  window.IMP_CUSTOMERS = <%- JSON.stringify(customers.map(c => ({ name: c.name, project: c.project || '' }))) %>;
   window.IMP_WATER_RATE = <%= waterRate %>;
+  window.IMP_TODAY = <%- JSON.stringify(today) %>;
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/js/import.js"></script>
