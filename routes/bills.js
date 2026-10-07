@@ -2,7 +2,7 @@
 const express = require('express');
 const db = require('../src/db');
 const { requireLogin, isOwnerOrAdmin } = require('../src/middleware');
-const { round2, todayISO, amountInWords, fmt, fmtDate } = require('../src/utils');
+const { round2, todayISO, amountInWords, fmt, fmtDate, billCategoryLabel, waterCategoryFrom } = require('../src/utils');
 
 const router = express.Router();
 router.use(requireLogin);
@@ -112,7 +112,7 @@ router.get('/bills', (req, res) => {
   if (q) {
     const needle = q.toLowerCase();
     const inBill = (b) =>
-      [b.billNo, b.customerName, b.project, b.poNo, b.billingMonth, b.dateIssued]
+      [b.billNo, b.customerName, b.project, b.poNo, b.billingMonth, b.dateIssued, b.category]
         .some((v) => String(v || '').toLowerCase().includes(needle)) ||
       (b.lines || []).some((l) =>
         [l.vehNo, l.dcNo, l.description].some((v) => String(v || '').toLowerCase().includes(needle))
@@ -135,7 +135,7 @@ router.get('/bills', (req, res) => {
   data.bills.forEach((b) => addName(b.customerName));
   names.sort((a, b) => a.localeCompare(b));
   const filteredTotal = round2(bills.reduce((s, b) => s + (Number(b.total) || 0), 0));
-  res.render('bills/list', { title: 'Bills', bills, type, status, company, q, companies: names, filteredTotal });
+  res.render('bills/list', { title: 'Bills', bills, type, status, company, q, companies: names, filteredTotal, billCategoryLabel });
 });
 
 router.get('/bills/new/aggregate', (req, res) => {
@@ -203,6 +203,7 @@ router.post('/bills/water', (req, res) => {
     id: seq,
     billNo: resolved.billNo || db.billNoFor(seq),
     type: 'water',
+    category: waterCategoryFrom(req.body.category, 'water'),
     customerName: String(req.body.customerName || '').trim(),
     project: String(req.body.project || '').trim(),
     periodFrom: String(req.body.periodFrom || ''),
@@ -290,6 +291,7 @@ router.post('/bills/:id/update', (req, res) => {
   if (bill.type === 'aggregate') {
     bill.billingMonth = String(req.body.billingMonth || '').trim();
   } else {
+    bill.category = waterCategoryFrom(req.body.category, bill.type);
     bill.periodFrom = String(req.body.periodFrom || '');
     bill.periodTo = String(req.body.periodTo || '');
     bill.poNo = String(req.body.poNo || '').trim();
@@ -346,6 +348,7 @@ function showBill(req, res, autoprint) {
     words: amountInWords(bill.total),
     fmt,
     fmtDate,
+    billCategoryLabel,
   });
 }
 

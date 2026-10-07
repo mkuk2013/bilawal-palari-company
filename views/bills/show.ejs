@@ -29,7 +29,7 @@
     </div>
   </div>
 
-  <h2 class="inv-title">BILL INVOICE<% if (bill.type === 'water') { %> — SWEET WATER<% } %></h2>
+  <h2 class="inv-title">BILL INVOICE<% if (bill.type === 'water') { %> — <%= billCategoryLabel(bill).toUpperCase() %><% } %></h2>
 
   <div class="inv-meta">
     <div>

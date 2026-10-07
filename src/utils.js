@@ -94,4 +94,21 @@ function amountInWords(amount) {
   return s + ' Only';
 }
 
-module.exports = { round2, fmt, fmtInt, fmtDate, monthLabel, todayISO, isoDaysAgo, amountInWords };
+/**
+ * Display label for a bill's water category. Water bills saved before
+ * categories existed have no `category` — they were all Sweet Water, so
+ * that is the display default (stored data is never rewritten).
+ */
+function billCategoryLabel(bill) {
+  if (!bill || bill.type !== 'water') return '';
+  const cat = String(bill.category || '').trim();
+  return cat !== '' ? cat : 'Sweet Water';
+}
+
+/** Normalize a submitted water-category value; '' for non-water bills. */
+function waterCategoryFrom(raw, type) {
+  if (type !== 'water') return '';
+  return String(raw || '').trim() === 'Bore Water' ? 'Bore Water' : 'Sweet Water';
+}
+
+module.exports = { round2, fmt, fmtInt, fmtDate, monthLabel, todayISO, isoDaysAgo, amountInWords, billCategoryLabel, waterCategoryFrom };

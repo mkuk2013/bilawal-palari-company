@@ -16,7 +16,7 @@
     <select name="type">
       <option value="">All types</option>
       <option value="aggregate" <%= type === 'aggregate' ? 'selected' : '' %>>Aggregate</option>
-      <option value="water" <%= type === 'water' ? 'selected' : '' %>>Sweet Water</option>
+      <option value="water" <%= type === 'water' ? 'selected' : '' %>>Water</option>
     </select>
     <select name="status">
       <option value="">All statuses</option>
@@ -36,7 +36,7 @@
         <% bills.forEach(b => { %>
         <tr>
           <td><a href="/bills/<%= b.id %>"><strong><%= b.billNo %></strong></a></td>
-          <td><span class="badge <%= b.type === 'aggregate' ? 'st-confirmed' : 'st-pending' %>"><%= b.type === 'aggregate' ? 'Aggregate' : 'Sweet Water' %></span></td>
+          <td><span class="badge <%= b.type === 'aggregate' ? 'st-confirmed' : 'st-pending' %>"><%= b.type === 'aggregate' ? 'Aggregate' : billCategoryLabel(b) %></span></td>
           <td><%= b.customerName %></td>
           <td><%= b.project %></td>
           <td><%= b.dateIssued %></td>

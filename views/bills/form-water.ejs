@@ -16,6 +16,13 @@
       <label>Project
         <input type="text" name="project" id="project" value="<%= bill ? bill.project : '' %>">
       </label>
+      <label>Water category
+        <% const selCat = bill ? (bill.category || 'Sweet Water') : 'Sweet Water'; %>
+        <select name="category">
+          <option value="Sweet Water" <%= selCat === 'Sweet Water' ? 'selected' : '' %>>Sweet Water</option>
+          <option value="Bore Water" <%= selCat === 'Bore Water' ? 'selected' : '' %>>Bore Water</option>
+        </select>
+      </label>
       <label>Billing period from
         <input type="date" name="periodFrom" value="<%= bill ? bill.periodFrom : today %>">
       </label>

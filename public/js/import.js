@@ -98,7 +98,7 @@
   }
 
   function extractMeta(rows, header) {
-    var meta = { billNo: '', project: '', poNo: '', section: '', periodFrom: '', periodTo: '', billingMonth: '', type: '' };
+    var meta = { billNo: '', project: '', poNo: '', section: '', periodFrom: '', periodTo: '', billingMonth: '', type: '', waterCategory: '' };
     var upto = header ? Math.max(1, header.row) : Math.min(rows.length, 10);
     var dates = [];
     for (var i = 0; i < upto && i < rows.length; i++) {
@@ -139,6 +139,13 @@
     var sec = meta.section.toLowerCase();
     if (sec.indexOf('water') !== -1) meta.type = 'water';
     else if (sec.indexOf('aggregate') !== -1 || sec.indexOf('sand') !== -1 || sec.indexOf('soil') !== -1 || sec.indexOf('crush') !== -1) meta.type = 'aggregate';
+    // Water category: "Bore water" sheets are a different category from
+    // "Sweet Water" even though both are water bills. An unclear section
+    // on a water sheet falls back to Sweet Water (the historical default).
+    if (meta.type === 'water') {
+      if (sec.indexOf('bore') !== -1) meta.waterCategory = 'Bore Water';
+      else meta.waterCategory = 'Sweet Water';
+    }
     return meta;
   }
 
@@ -275,9 +282,11 @@
       });
       html += '<section class="card">' +
         '<h2>Preview — ' + esc(p.label) + ' · ' + p.lines.length + ' lines mili' + (p.skipped ? ' (' + p.skipped + ' khaali/total rows chor di gayein)' : '') + '</h2>' +
+        (isAgg ? '' : '<p class="muted">Water category: <span class="badge st-pending">' + esc(meta.waterCategory || 'Sweet Water') + '</span> <small>(sheet ke section se pehchani gayi — bill isi category mein save hoga)</small></p>') +
         '<p class="muted">Lines check kar lein — koi ghalti ho to yahi theek kar lein, fazool line ka ✕ daba dein. Phir bill ki details bhar kar Save bill dabayein. Estimated total: <strong>Rs ' +
         total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong> (final total save hote waqt calculate hoga).</p>' +
         '<form method="post" action="' + (isAgg ? '/bills/aggregate' : '/bills/water') + '">' +
+        (isAgg ? '' : '<input type="hidden" name="category" value="' + esc(meta.waterCategory || 'Sweet Water') + '">') +
         '<div class="form-grid">' +
         '<label>Bill No <input type="text" name="billNo" value="' + esc(meta.billNo) + '" placeholder="Khaali = auto number">' +
         '<small class="muted">' + (meta.billNo ? 'Sheet se parha gaya hai — badal sakte hain.' : 'Auto number lagega — chahein to apna number likh dein.') + '</small></label>' +
