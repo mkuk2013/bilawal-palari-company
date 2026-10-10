@@ -43,7 +43,7 @@ function seedData() {
       invoicePhone: '+92-300-1234567',
       email: 'billing@bilawalpalari.com',
       ntn: '7123456-7',
-      preparedBy: { name: 'Muhammad Raza', designation: 'Billing Officer' },
+      preparedBy: { name: 'Muhammad Samejo', designation: 'Billing Officer' },
       approvedBy: { name: 'Bilawal Palari', designation: 'Managing Director' },
       terms:
         'Payment due within 15 days from invoice date • Please reference Bill No. for all payments • Thank you for your business — we appreciate your partnership',
@@ -93,6 +93,15 @@ function load() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      // One-time migration (owner request, 2026-10-10): bills are now prepared
+      // by Muhammad Samejo — installs still carrying the old seeded default
+      // "Muhammad Raza" are renamed once; the flag keeps any later admin edit.
+      if (db.company && !db.company._preparedByMigrated
+          && db.company.preparedBy && db.company.preparedBy.name === 'Muhammad Raza') {
+        db.company.preparedBy.name = 'Muhammad Samejo';
+        db.company._preparedByMigrated = true;
+        save();
+      }
       return db;
     }
   } catch (err) {

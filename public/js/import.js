@@ -159,12 +159,15 @@
       for (var i = 0; i < ks.length; i++) if (map[ks[i]] === field) return +ks[i];
       return -1;
     }
-    var lines = [], skipped = 0, totalSeen = false;
+    var lines = [], skipped = 0, skippedData = 0, afterTotal = false;
+    // Client sheets merge cells vertically (vehicle/date/description span
+    // several trip rows) — only the first row carries the value, so carry
+    // the last seen values forward instead of dropping those rows.
+    var lastVeh = '', lastDate = '', lastDesc = '';
     for (var i = start; i < rows.length; i++) {
       var r = rows[i] || [];
       var joined = r.map(function (c) { return c == null ? '' : String(c); }).join(' ').toLowerCase();
       if (!joined.trim()) { skipped++; continue; }
-      if (totalSeen) { skipped++; continue; }
       function g(field, pos) {
         if (map) { var ci = col(field); return ci === -1 ? '' : (r[ci] == null ? '' : r[ci]); }
         return pos >= 0 ? (r[pos] == null ? '' : r[pos]) : '';
@@ -177,14 +180,42 @@
       } else {
         f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: g('desc', -1), trip: g('trip', 3), qty: g('qty', 4), rate: g('rate', 5), tqty: g('tqty', -1) };
       }
-      var veh = String(f.veh == null ? '' : f.veh).trim();
-      var desc = String(f.desc == null ? '' : f.desc).trim();
+      var vehRaw = String(f.veh == null ? '' : f.veh).trim();
+      var descRaw = String(f.desc == null ? '' : f.desc).trim();
+      var dateRaw = String(f.date == null ? '' : f.date).trim();
+      // A totals row is skipped but no longer ends the table: client sheets
+      // print sub-totals between sections with real records below them, and
+      // the old hard stop silently lost every record after the first one.
       if (joined.indexOf('total') !== -1 &&
-          (veh === '' || veh.toLowerCase().indexOf('total') !== -1 || String(f.date).toLowerCase().indexOf('total') !== -1)) {
-        totalSeen = true; skipped++; continue;
+          (vehRaw === '' || vehRaw.toLowerCase().indexOf('total') !== -1 || dateRaw.toLowerCase().indexOf('total') !== -1)) {
+        afterTotal = true; skipped++; continue;
       }
-      if (normKey(veh) === 'vehno' || normKey(f.date) === 'date') { skipped++; continue; }
-      if (veh === '' && desc === '') { skipped++; continue; }
+      if (normKey(vehRaw) === 'vehno' || normKey(dateRaw) === 'date') {
+        lastVeh = ''; lastDate = ''; lastDesc = '';
+        skipped++; continue;
+      }
+      var hasVeh = vehRaw !== '';
+      var hasDate = dateRaw !== '' && normDate(dateRaw) !== '';
+      var qtySignal = num(f.qty) > 0 || num(f.tqty) > 0;
+      if (afterTotal) {
+        var resumes = (hasVeh && hasDate) || (hasVeh && qtySignal) || (hasDate && qtySignal);
+        if (!resumes) { skipped++; if (qtySignal) skippedData++; continue; }
+        afterTotal = false;
+      }
+      if (hasVeh) lastVeh = vehRaw;
+      if (dateRaw !== '') lastDate = dateRaw;
+      if (descRaw !== '') lastDesc = descRaw;
+      var veh = hasVeh ? vehRaw : lastVeh;
+      var desc = descRaw !== '' ? descRaw : lastDesc;
+      var dateEff = dateRaw !== '' ? dateRaw : lastDate;
+      // A line needs an identity of its own (vehicle, date, DC, description
+      // or trips). Sheets end with an UNLABELLED totals row carrying only
+      // quantity/amount figures — no identity — which must never become a
+      // line; merged-cell continuations keep at least a DC or trips value.
+      var dcRaw = String(f.dc == null ? '' : f.dc).trim();
+      var hasIdentity = hasVeh || dateRaw !== '' || dcRaw !== '' || descRaw !== '' ||
+        String(f.trip == null ? '' : f.trip).trim() !== '';
+      if (!hasIdentity) { skipped++; continue; }
       var trip = num(f.trip);
       if (trip <= 0) trip = 1;
       var qty = num(f.qty);
@@ -202,14 +233,14 @@
         }
       }
       var line = {
-        l_date: normDate(f.date), l_veh: veh, l_dc: String(f.dc == null ? '' : f.dc).trim(),
+        l_date: normDate(dateEff), l_veh: veh, l_dc: dcRaw,
         l_trip: fmtN(trip), l_rate: fmtN(rate)
       };
       if (type === 'aggregate') { line.l_desc = desc; line.l_qty = fmtN(qty); }
       else line.l_gal = fmtN(qty);
       lines.push(line);
     }
-    return { lines: lines, skipped: skipped };
+    return { lines: lines, skipped: skipped, skippedData: skippedData };
   }
 
   function sheetsFromWorkbook(wb, XLSX) {
