@@ -86,6 +86,7 @@ function seedData() {
       { key: 'dumper', label: 'Dumper', unit: 'CFT', water: false },
       { key: 'tanker', label: 'Tanker', unit: 'Gallon', water: true },
     ],
+    materialUnits: ['CFT', 'gallon'],
     orders: [],
     bills: [],
     seq: { user: 2, customer: 1, material: 4, vehicle: vid, order: 0, bill: 0 },
@@ -127,6 +128,19 @@ function load() {
           { key: 'dumper', label: 'Dumper', unit: 'CFT', water: false },
           { key: 'tanker', label: 'Tanker', unit: 'Gallon', water: true },
         ];
+        save();
+      }
+      // Material units (owner request, 2026-10-10): installs seeded before
+      // the managed units list existed get the defaults plus any units
+      // their materials already use; the client manages the list from
+      // the Materials page.
+      if (!Array.isArray(db.materialUnits) || !db.materialUnits.length) {
+        const units = ['CFT', 'gallon'];
+        (db.materials || []).forEach((m) => {
+          const u = String(m.unit || '').trim();
+          if (u && !units.includes(u)) units.push(u);
+        });
+        db.materialUnits = units;
         save();
       }
       return db;
@@ -206,4 +220,19 @@ function fleetTypeSlug(label, types) {
   return slug;
 }
 
-module.exports = { load, get: load, save, nextId, nextBillSeq, billNoFor, DATA_FILE, fleetTypes, fleetTypeFind, fleetTypeLabel, fleetTypeUnit, fleetTypeIsWater, fleetTypeSlug };
+/* ---------------- Material units ----------------
+ * The units offered for materials are a managed list (Materials page):
+ * defaults are CFT and gallon; the client can add more (Ton, Trip,
+ * Bag...). The water logic keys off the 'gallon' unit, compared
+ * case-insensitively. */
+function materialUnits(data) {
+  if (Array.isArray(data.materialUnits) && data.materialUnits.length) return data.materialUnits;
+  const units = ['CFT', 'gallon'];
+  (data.materials || []).forEach((m) => {
+    const u = String(m.unit || '').trim();
+    if (u && !units.includes(u)) units.push(u);
+  });
+  return units;
+}
+
+module.exports = { load, get: load, save, nextId, nextBillSeq, billNoFor, DATA_FILE, fleetTypes, fleetTypeFind, fleetTypeLabel, fleetTypeUnit, fleetTypeIsWater, fleetTypeSlug, materialUnits };

@@ -82,13 +82,19 @@ router.get('/materials', (req, res) => {
   const editing = req.query.edit
     ? data.materials.find((m) => m.id === Number(req.query.edit)) || null
     : null;
-  res.render('materials', { title: 'Materials & Supplies', materials: data.materials, editing });
+  res.render('materials', { title: 'Materials & Supplies', materials: data.materials, units: db.materialUnits(data), editing });
 });
 
 router.post('/materials', (req, res) => {
   const data = db.get();
+  const units = db.materialUnits(data).slice();
   const name = String(req.body.name || '').trim();
-  const unit = String(req.body.unit || '').trim() || 'CFT';
+  const unit = String(req.body.unit || '').trim() || units[0] || 'CFT';
+  // A unit typed by hand joins the managed list so it can be reused.
+  if (!units.includes(unit)) {
+    units.push(unit);
+    data.materialUnits = units;
+  }
   const rate = Math.max(0, parseFloat(req.body.rate) || 0);
   if (!name) return res.redirect('/materials?error=Material name is required.');
   if (req.body.id) {
@@ -99,6 +105,33 @@ router.post('/materials', (req, res) => {
   }
   db.save();
   res.redirect('/materials?msg=Material saved.');
+});
+
+router.post('/materials/units', (req, res) => {
+  const data = db.get();
+  const units = db.materialUnits(data).slice();
+  const unit = String(req.body.unit || '').trim();
+  if (!unit) return res.redirect('/materials?error=Unit name is required.');
+  if (units.some((u) => u.toLowerCase() === unit.toLowerCase())) {
+    return res.redirect('/materials?error=Ye unit pehle se list mein hai.');
+  }
+  units.push(unit);
+  data.materialUnits = units;
+  db.save();
+  res.redirect('/materials?msg=Unit added.');
+});
+
+router.post('/materials/units/delete', (req, res) => {
+  const data = db.get();
+  const units = db.materialUnits(data);
+  const unit = String(req.body.unit || '');
+  if (units.length <= 1) return res.redirect('/materials?error=At least one unit must remain.');
+  if (data.materials.some((m) => m.unit === unit)) {
+    return res.redirect('/materials?error=Is unit par materials mojood hain — pehle un ki unit change ya delete karein.');
+  }
+  data.materialUnits = units.filter((u) => u !== unit);
+  db.save();
+  res.redirect('/materials?msg=Unit deleted.');
 });
 
 router.post('/materials/:id/delete', (req, res) => {

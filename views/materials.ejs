@@ -7,19 +7,46 @@
     <label>Name
       <input type="text" name="name" required value="<%= editing ? editing.name : '' %>" placeholder="e.g. Coarse Aggregate">
     </label>
-    <label>Unit (list se chunein ya apni unit likh dein)
-      <input type="text" name="unit" list="unit-options" required value="<%= editing ? editing.unit : 'CFT' %>" placeholder="e.g. CFT / gallon / Ton / Trip">
-      <datalist id="unit-options">
-        <% const units = ['CFT', 'gallon']; materials.forEach(m => { if (!units.includes(m.unit)) units.push(m.unit); }); units.forEach(u => { %>
-        <option value="<%= u %>"></option>
+    <label>Unit
+      <select name="unit">
+        <% units.forEach(u => { %>
+        <option value="<%= u %>" <%= editing && editing.unit === u ? 'selected' : '' %>><%= u %></option>
         <% }) %>
-      </datalist>
+        <% if (editing && !units.includes(editing.unit)) { %>
+        <option value="<%= editing.unit %>" selected><%= editing.unit %></option>
+        <% } %>
+      </select>
     </label>
     <label>Default rate (Rs)
       <input type="number" name="rate" min="0" step="any" required value="<%= editing ? editing.rate : '' %>">
     </label>
     <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Add material' %></button>
     <% if (editing) { %><a class="btn btn-ghost" href="/materials">Cancel</a><% } %>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Units</h2>
+  <p class="muted">Material ki units ki list — default CFT aur gallon hain; apni marzi ki unit bhi add kar sakte hain (misal: Ton, Trip, Bag). Jo unit kisi material par lagi ho, wo delete nahi hoti.</p>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Unit</th><th>Materials</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% units.forEach(u => { const count = materials.filter(m => m.unit === u).length; %>
+      <tr>
+        <td><strong><%= u %></strong></td>
+        <td><%= count %></td>
+        <td class="actions-cell">
+          <form method="post" action="/materials/units/delete" onsubmit="return confirm('Delete this unit?')"><input type="hidden" name="unit" value="<%= u %>"><button class="btn btn-small btn-danger" type="submit" <%= count > 0 ? 'disabled title="Pehle is unit ke materials change ya delete karein"' : '' %>>Delete</button></form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <form method="post" action="/materials/units" class="form form-inline">
+    <label>New unit
+      <input type="text" name="unit" required placeholder="e.g. Ton / Trip / Bag">
+    </label>
+    <button type="submit" class="btn btn-navy">Add unit</button>
   </form>
 </section>
 
