@@ -391,6 +391,10 @@ function auditBill(bill) {
             msg: `Line ${n} ki date ghalat hai (${date}) — aisi date calendar mein nahi hoti (${who}).`,
             hint: 'Bill edit karke sahi date likhein.' });
         }
+      } else {
+        issues.push({ line: n, kind: 'date_invalid',
+          msg: `Line ${n} ki date samajh nahi aayi ("${date}") — bill mein ajeeb si nazar ayegi (${who}).`,
+          hint: 'Bill edit karke date saaf YYYY-MM-DD shakal mein likhein, ya file dobara upload karein (naya importer aisi dates khud theek kar deta hai).' });
       }
     }
     if (veh === '') {

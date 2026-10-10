@@ -35,6 +35,23 @@
       var d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
       return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
     }
+    // Client sheets sometimes hold a date typed as a mashed NUMBER:
+    // "3.9.2026" lost its second dot and became 3.92026. Decode it back:
+    // the integer part is the day, the fraction is month+year (last 4).
+    var numVal = typeof v === 'number' ? v : (v !== '' && !isNaN(Number(v)) ? Number(v) : null);
+    if (numVal !== null && numVal > 0 && numVal < 20000 && String(v).indexOf('.') !== -1) {
+      var parts = numVal.toFixed(6).split('.');
+      var frac = parts[1].replace(/0+$/, '');
+      if (frac.length === 5 || frac.length === 6) {
+        var mDay = parseInt(parts[0], 10);
+        var mYear = parseInt(frac.slice(-4), 10);
+        var mMonth = parseInt(frac.slice(0, frac.length - 4), 10);
+        var chk = new Date(Date.UTC(mYear, mMonth - 1, mDay));
+        if (chk.getUTCFullYear() === mYear && chk.getUTCMonth() === mMonth - 1 && chk.getUTCDate() === mDay) {
+          return mYear + '-' + pad(mMonth) + '-' + pad(mDay);
+        }
+      }
+    }
     var s = String(v).trim();
     var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (m) return m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
