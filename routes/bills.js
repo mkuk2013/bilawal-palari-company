@@ -135,31 +135,7 @@ router.get('/bills', (req, res) => {
   data.bills.forEach((b) => addName(b.customerName));
   names.sort((a, b) => a.localeCompare(b));
   const filteredTotal = round2(bills.reduce((s, b) => s + (Number(b.total) || 0), 0));
-  const issueCounts = {};
-  bills.forEach((b) => { const c = auditBill(b).length; if (c) issueCounts[b.id] = c; });
-  res.render('bills/list', { title: 'Bills', bills, type, status, company, q, companies: names, filteredTotal, billCategoryLabel, issueCounts });
-});
-
-/** Online Inspector — every bill audited in one place. */
-router.get('/inspector', (req, res) => {
-  const data = db.get();
-  const problemBills = [];
-  let clean = 0;
-  data.bills.forEach((b) => {
-    const issues = auditBill(b);
-    if (issues.length) problemBills.push({ bill: b, issues });
-    else clean++;
-  });
-  problemBills.sort((a, b) => b.bill.id - a.bill.id);
-  res.render('inspector', {
-    title: 'Inspector',
-    checked: data.bills.length,
-    clean,
-    problemBills,
-    totalIssues: problemBills.reduce((s, p) => s + p.issues.length, 0),
-    fmt,
-    billCategoryLabel,
-  });
+  res.render('bills/list', { title: 'Bills', bills, type, status, company, q, companies: names, filteredTotal, billCategoryLabel });
 });
 
 router.get('/bills/new/aggregate', (req, res) => {
@@ -355,84 +331,6 @@ function buildGroups(bill) {
   return groups;
 }
 
-/**
- * Online Inspector — audit one bill for hidden, misplaced or incomplete
- * data. Returns issues: { line (1-based or null), kind, msg, hint }.
- * An empty list means the bill is complete. Mirrors bill_audit() in PHP.
- */
-function auditBill(bill) {
-  const issues = [];
-  const lines = bill.lines || [];
-  const dcSeen = new Map();
-  lines.forEach((l, i) => {
-    const n = i + 1;
-    const date = String(l.date || '').trim();
-    const veh = String(l.vehNo || '').trim();
-    const dc = String(l.dcNo || '').trim();
-    const desc = String(l.description || '').trim();
-    const amount = Number(l.amount) || 0;
-    const who = `${veh || '—'} / DC ${dc || '—'}`;
-    if (date === '' && veh === '' && dc === '' && desc === '') {
-      issues.push({ line: n, kind: 'phantom',
-        msg: `Line ${n} bilkul khaali hai — na date, na vehicle, na DC. Ye phantom/ghalat line lagti hai.`,
-        hint: 'Bill edit karke is line ko khaali karke save karein (line delete ho jayegi), ya bill dobara sahi file se banayein.' });
-      return;
-    }
-    if (date === '') {
-      issues.push({ line: n, kind: 'date_missing',
-        msg: `Line ${n} ki DATE khaali hai (${who}) — bill mein date show nahi hogi.`,
-        hint: 'Bill edit karke is line ki date bhar dein.' });
-    } else {
-      const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (m) {
-        const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-        if (dt.getUTCFullYear() !== +m[1] || dt.getUTCMonth() !== +m[2] - 1 || dt.getUTCDate() !== +m[3]) {
-          issues.push({ line: n, kind: 'date_invalid',
-            msg: `Line ${n} ki date ghalat hai (${date}) — aisi date calendar mein nahi hoti (${who}).`,
-            hint: 'Bill edit karke sahi date likhein.' });
-        }
-      } else {
-        issues.push({ line: n, kind: 'date_invalid',
-          msg: `Line ${n} ki date samajh nahi aayi ("${date}") — bill mein ajeeb si nazar ayegi (${who}).`,
-          hint: 'Bill edit karke date saaf YYYY-MM-DD shakal mein likhein, ya file dobara upload karein (naya importer aisi dates khud theek kar deta hai).' });
-      }
-    }
-    if (veh === '') {
-      issues.push({ line: n, kind: 'veh_missing',
-        msg: `Line ${n} ka VEHICLE khaali hai (DC ${dc || '—'}).`,
-        hint: 'Bill edit karke vehicle number bhar dein.' });
-    }
-    if (dc === '') {
-      issues.push({ line: n, kind: 'dc_missing',
-        msg: `Line ${n} ka DC No khaali hai (${veh || '—'}).`,
-        hint: 'Bill edit karke DC number bhar dein.' });
-    }
-    if (amount <= 0) {
-      issues.push({ line: n, kind: 'amount_zero',
-        msg: `Line ${n} ka amount Rs 0 hai (${who}) — trips/qty/rate check karein.`,
-        hint: 'Bill edit karke qty aur rate check karein.' });
-    }
-    if (dc !== '') {
-      if (!dcSeen.has(dc)) dcSeen.set(dc, []);
-      dcSeen.get(dc).push(n);
-    }
-  });
-  dcSeen.forEach((ns, dc) => {
-    if (ns.length > 1) {
-      issues.push({ line: ns[0], kind: 'dc_duplicate',
-        msg: `DC No ${dc} aik se zyada lines par hai (lines ${ns.join(', ')}) — double entry check karein.`,
-        hint: 'Agar ye aik hi delivery hai to duplicate line hata dein; alag deliveries hain to DC number theek karein.' });
-    }
-  });
-  const sum = round2(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0));
-  if (Math.abs(sum - (Number(bill.total) || 0)) > 1) {
-    issues.push({ line: null, kind: 'total_mismatch',
-      msg: `Bill ka total (Rs ${fmt(bill.total)}) lines ke total (Rs ${fmt(sum)}) se match nahi karta.`,
-      hint: 'Bill edit karke save karein — total khud dobara calculate ho jayega.' });
-  }
-  return issues;
-}
-
 function showBill(req, res, autoprint) {
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
@@ -447,7 +345,6 @@ function showBill(req, res, autoprint) {
     groups,
     totals,
     autoprint,
-    auditIssues: auditBill(bill),
     words: amountInWords(bill.total),
     fmt,
     fmtDate,
