@@ -311,23 +311,19 @@ router.post('/bills/:id/update', (req, res) => {
   res.redirect(`/bills/${bill.id}?msg=Bill ${bill.billNo} updated.`);
 });
 
-/**
- * Group lines for the invoice, preserving the source sheet's exact order:
- * only CONSECUTIVE lines with the same key form a group. When a vehicle
- * (water) or material (aggregate) appears again after a different one, it
- * starts a NEW group below — never merged back into the earlier group
- * (owner/client requirement, 2026-10-10).
- */
+/** Group aggregate lines by material, water lines by vehicle, preserving first-seen order. */
 function buildGroups(bill) {
   const groups = [];
+  const byKey = new Map();
   const keyOf = bill.type === 'aggregate' ? (l) => l.description : (l) => l.vehNo;
   bill.lines.forEach((line, idx) => {
     const key = keyOf(line) || '—';
-    let g = groups[groups.length - 1];
-    if (!g || g.key !== key) {
-      g = { key, lines: [], trips: 0, amount: 0 };
+    if (!byKey.has(key)) {
+      const g = { key, lines: [], trips: 0, amount: 0 };
+      byKey.set(key, g);
       groups.push(g);
     }
+    const g = byKey.get(key);
     g.lines.push({ ...line, sno: idx + 1 });
     g.trips += Number(line.trip) || 0;
     g.amount = round2(g.amount + line.amount);
