@@ -35,7 +35,9 @@
       <tbody>
         <% bills.forEach(b => { %>
         <tr>
-          <td><a href="/bills/<%= b.id %>"><strong><%= b.billNo %></strong></a></td>
+          <td><a href="/bills/<%= b.id %>"><strong><%= b.billNo %></strong></a>
+            <% if (issueCounts && issueCounts[b.id]) { %><br><a href="/bills/<%= b.id %>" title="Inspector: is bill mein adhoora/hidden data hai"><span class="badge st-cancelled">🔍 <%= issueCounts[b.id] %> masle — check karein</span></a><% } %>
+          </td>
           <td><span class="badge <%= b.type === 'aggregate' ? 'st-confirmed' : 'st-pending' %>"><%= b.type === 'aggregate' ? 'Aggregate' : billCategoryLabel(b) %></span></td>
           <td><%= b.customerName %></td>
           <td><%= b.project %></td>

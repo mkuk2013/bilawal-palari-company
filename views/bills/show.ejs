@@ -15,6 +15,24 @@
   <span class="muted small">Saved by <%= bill.savedBy %><% if (bill.fromOrderId) { %> · from order #<%= bill.fromOrderId %><% } %></span>
 </div>
 
+<% if (auditIssues && auditIssues.length) { %>
+<section class="card no-print" style="border:2px solid #d97706;background:#fffbeb">
+  <h2>🔍 Inspector — is bill mein <%= auditIssues.length %> masle mile</h2>
+  <p class="muted">Ye records bill mein hidden ya adhoore hain — client check karta hai, is liye inhein theek karna zaroori hai:</p>
+  <ul style="margin:6px 0 6px 18px">
+    <% auditIssues.slice(0, 20).forEach(iss => { %>
+    <li><strong><%= iss.msg %></strong><br><span class="muted small"><%= iss.hint %></span></li>
+    <% }) %>
+    <% if (auditIssues.length > 20) { %><li>…aur <%= auditIssues.length - 20 %> masle — poori list <a href="/inspector">Inspector page</a> par hai.</li><% } %>
+  </ul>
+  <a class="btn btn-small btn-gold" href="/bills/<%= bill.id %>/edit">✏️ Bill edit karke theek karein</a>
+</section>
+<% } else { %>
+<section class="card no-print" style="border:2px solid #16a34a;background:#f0fdf4">
+  <p style="margin:0"><strong>🔍 Inspector check ✓</strong> — is bill ka saara data mukammal hai: har line ki date, vehicle aur DC mojood hai, koi record hidden ya misplaced nahi.</p>
+</section>
+<% } %>
+
 <article class="invoice">
   <div class="inv-head">
     <img src="/logo.png" alt="Company logo" class="inv-logo">

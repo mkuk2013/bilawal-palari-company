@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+<section class="card">
+  <h2>🔍 Online Inspector</h2>
+  <p class="muted">Ye checker har bill ko khud scan karta hai — khaali date, khaali vehicle ya DC, phantom (bilkul khaali) lines, duplicate DC numbers aur total ka mismatch. Koi record hidden ya misplaced ho to yahan khud nazar ajata hai; baar baar kehna nahi padta.</p>
+  <p>
+    <span class="badge st-confirmed">Bills check hue: <%= checked %></span>
+    <span class="badge st-delivered">✓ Mukammal: <%= clean %></span>
+    <% if (problemBills.length) { %><span class="badge st-cancelled">⚠ Masle wale bills: <%= problemBills.length %> (kul <%= totalIssues %> masle)</span><% } %>
+  </p>
+</section>
+
+<% if (!problemBills.length) { %>
+<section class="card" style="border:2px solid #16a34a;background:#f0fdf4">
+  <p style="margin:0"><strong>✓ Sab theek hai</strong> — har bill ka data mukammal hai. Koi record hidden, khaali ya misplaced nahi.</p>
+</section>
+<% } %>
+
+<% problemBills.forEach(p => { const b = p.bill; const issues = p.issues; %>
+<section class="card" style="border:2px solid #d97706">
+  <h2 style="margin-bottom:4px">Bill <a href="/bills/<%= b.id %>"><%= b.billNo %></a> — <%= issues.length %> masle</h2>
+  <p class="muted" style="margin-top:0"><%= b.customerName %> · <%= b.type === 'aggregate' ? 'Aggregate' : billCategoryLabel(b) %> · <%= b.lines.length %> lines · Total Rs <%= fmt(b.total) %>
+    · <a href="/bills/<%= b.id %>">Bill dekhein</a> · <a href="/bills/<%= b.id %>/edit">Edit karein</a></p>
+  <ul style="margin:6px 0 6px 18px">
+    <% issues.slice(0, 15).forEach(iss => { %>
+    <li><strong><%= iss.msg %></strong> <span class="muted small">— <%= iss.hint %></span></li>
+    <% }) %>
+    <% if (issues.length > 15) { %><li>…aur <%= issues.length - 15 %> masle — bill kholne par Inspector panel mein saare nazar ayenge.</li><% } %>
+  </ul>
+</section>
+<% }) %>
+<%- include('partials/footer') %>

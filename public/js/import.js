@@ -208,14 +208,14 @@
       var veh = hasVeh ? vehRaw : lastVeh;
       var desc = descRaw !== '' ? descRaw : lastDesc;
       var dateEff = dateRaw !== '' ? dateRaw : lastDate;
-      // A line needs an identity of its own (vehicle, date, DC, description
-      // or trips). Sheets end with an UNLABELLED totals row carrying only
-      // quantity/amount figures — no identity — which must never become a
-      // line; merged-cell continuations keep at least a DC or trips value.
+      // A line needs an identity of its own (vehicle, date, DC or
+      // description). A row carrying ONLY trip / quantity figures is NOT
+      // a record — client sheets contain pre-formatted empty blocks and
+      // trailing totals rows; those phantom rows once became hundreds of
+      // blank bill lines. Merged-cell continuations keep at least a DC.
       var dcRaw = String(f.dc == null ? '' : f.dc).trim();
-      var hasIdentity = hasVeh || dateRaw !== '' || dcRaw !== '' || descRaw !== '' ||
-        String(f.trip == null ? '' : f.trip).trim() !== '';
-      if (!hasIdentity) { skipped++; continue; }
+      var hasIdentity = hasVeh || dateRaw !== '' || dcRaw !== '' || descRaw !== '';
+      if (!hasIdentity) { skipped++; if (qtySignal) skippedData++; continue; }
       var trip = num(f.trip);
       if (trip <= 0) trip = 1;
       var qty = num(f.qty);
