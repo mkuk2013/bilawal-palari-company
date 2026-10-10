@@ -43,7 +43,7 @@ function seedData() {
       invoicePhone: '+92-300-1234567',
       email: 'billing@bilawalpalari.com',
       ntn: '7123456-7',
-      preparedBy: { name: 'Muhammad Samejo', designation: 'Billing Officer' },
+      preparedBy: { name: 'Mumtaz Samejo', designation: 'Billing Officer' },
       approvedBy: { name: 'Bilawal Palari', designation: 'Managing Director' },
       terms:
         'Payment due within 15 days from invoice date • Please reference Bill No. for all payments • Thank you for your business — we appreciate your partnership',
@@ -104,6 +104,19 @@ function load() {
           && db.company.preparedBy && db.company.preparedBy.name === 'Muhammad Raza') {
         db.company.preparedBy.name = 'Muhammad Samejo';
         db.company._preparedByMigrated = true;
+        save();
+      }
+      // One-time name correction (owner, 2026-10-10): the person preparing
+      // the bills is Mumtaz Samejo. Installs carrying either earlier seeded
+      // default ("Muhammad Raza" or "Muhammad Samejo") move to the correct
+      // name, exactly once — later admin edits are respected.
+      if (db.company && !db.company._preparedByNameV2) {
+        db.company._preparedByNameV2 = true;
+        db.company._preparedByMigrated = true;
+        const cur = db.company.preparedBy && db.company.preparedBy.name;
+        if (cur === 'Muhammad Raza' || cur === 'Muhammad Samejo') {
+          db.company.preparedBy.name = 'Mumtaz Samejo';
+        }
         save();
       }
       // Fleet types (owner request, 2026-10-10): installs seeded before
