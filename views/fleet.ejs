@@ -9,11 +9,15 @@
     </label>
     <label>Type
       <select name="type">
-        <option value="dumper" <%= editing && editing.type === 'dumper' ? 'selected' : '' %>>Dumper</option>
-        <option value="tanker" <%= editing && editing.type === 'tanker' ? 'selected' : '' %>>Tanker</option>
+        <% types.forEach(t => { %>
+        <option value="<%= t.key %>" <%= editing && editing.type === t.key ? 'selected' : '' %>><%= t.label %></option>
+        <% }) %>
+        <% if (editing && !types.some(t => t.key === editing.type)) { %>
+        <option value="<%= editing.type %>" selected><%= editing.type.charAt(0).toUpperCase() + editing.type.slice(1) %></option>
+        <% } %>
       </select>
     </label>
-    <label>Capacity (CFT for dumper, gallons for tanker)
+    <label>Capacity (type ki unit mein — neeche har type ki unit di hai)
       <input type="number" name="capacity" min="0" step="any" required value="<%= editing ? editing.capacity : '' %>">
     </label>
     <button type="submit" class="btn btn-gold"><%= editing ? 'Save changes' : 'Add vehicle' %></button>
@@ -22,30 +26,50 @@
 </section>
 
 <section class="card">
-  <h2>Dumpers (<%= dumpers.length %>)</h2>
+  <h2>Fleet types</h2>
+  <p class="muted">Dumper aur Tanker ke ilawa apni marzi ki type bhi add kar sakte hain — misal: Excavator, Crane, Loader, Water Bowser. Har type ki apni capacity unit hoti hai (CFT, Gallon, Ton waghera). "Water type" wali types water bill ke vehicles mein bhi aati hain.</p>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Vehicle No</th><th>Capacity (CFT)</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Type</th><th>Capacity unit</th><th>Water bill mein</th><th>Vehicles</th><th>Actions</th></tr></thead>
     <tbody>
-      <% dumpers.forEach(v => { %>
-      <tr><td><strong><%= v.regNo %></strong></td><td><%= v.capacity.toLocaleString('en-US') %></td>
-        <td class="actions-cell"><a class="btn btn-small btn-navy" href="/fleet?edit=<%= v.id %>">Edit</a>
-        <form method="post" action="/fleet/<%= v.id %>/delete" onsubmit="return confirm('Delete this vehicle?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
+      <% types.forEach(t => { const count = vehicles.filter(v => v.type === t.key).length; %>
+      <tr>
+        <td><strong><%= t.label %></strong></td>
+        <td><%= t.unit || '—' %></td>
+        <td><%= t.water ? 'Yes' : 'No' %></td>
+        <td><%= count %></td>
+        <td class="actions-cell">
+          <form method="post" action="/fleet/types/delete" onsubmit="return confirm('Delete this fleet type?')"><input type="hidden" name="key" value="<%= t.key %>"><button class="btn btn-small btn-danger" type="submit" <%= count > 0 ? 'disabled title="Pehle is type ki vehicles delete ya change karein"' : '' %>>Delete</button></form>
+        </td>
+      </tr>
       <% }) %>
     </tbody>
   </table></div>
+  <form method="post" action="/fleet/types" class="form form-inline">
+    <label>Type name
+      <input type="text" name="label" required placeholder="e.g. Excavator">
+    </label>
+    <label>Capacity unit
+      <input type="text" name="unit" placeholder="e.g. Ton / Hour / Gallon">
+    </label>
+    <label class="checkbox-label"><input type="checkbox" name="water" value="1"> Water type (water bill mein bhi aye)</label>
+    <button type="submit" class="btn btn-navy">Add type</button>
+  </form>
 </section>
 
+<% groups.forEach(g => { %>
 <section class="card">
-  <h2>Water Tankers (<%= tankers.length %>)</h2>
+  <h2><%= g.label %> (<%= g.items.length %>)</h2>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Vehicle No</th><th>Capacity (gallons)</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Vehicle No</th><th>Capacity<%= g.unit ? ' (' + g.unit + ')' : '' %></th><th>Actions</th></tr></thead>
     <tbody>
-      <% tankers.forEach(v => { %>
+      <% g.items.forEach(v => { %>
       <tr><td><strong><%= v.regNo %></strong></td><td><%= v.capacity.toLocaleString('en-US') %></td>
         <td class="actions-cell"><a class="btn btn-small btn-navy" href="/fleet?edit=<%= v.id %>">Edit</a>
         <form method="post" action="/fleet/<%= v.id %>/delete" onsubmit="return confirm('Delete this vehicle?')"><button class="btn btn-small btn-danger" type="submit">Delete</button></form></td></tr>
       <% }) %>
+      <% if (!g.items.length) { %><tr><td colspan="3" class="muted">Is type mein abhi koi vehicle nahi.</td></tr><% } %>
     </tbody>
   </table></div>
 </section>
+<% }) %>
 <%- include('partials/footer') %>

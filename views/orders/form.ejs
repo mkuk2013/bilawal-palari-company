@@ -21,10 +21,10 @@
     <label>Delivery date
       <input type="date" name="deliveryDate" required value="<%= order ? order.deliveryDate : new Date().toISOString().slice(0,10) %>">
     </label>
-    <label>Vehicle (dumper / tanker)
+    <label>Vehicle
       <select name="vehicleId" id="vehicleId">
         <option value="">— Select vehicle —</option>
-        <% vehicles.forEach(v => { %><option value="<%= v.id %>" data-capacity="<%= v.capacity %>" <%= order && order.vehicleId === v.id ? 'selected' : '' %>><%= v.regNo %> · <%= v.type %> · <%= v.capacity.toLocaleString('en-US') %> <%= v.type === 'tanker' ? 'gal' : 'CFT' %></option><% }) %>
+        <% vehicles.forEach(v => { %><option value="<%= v.id %>" data-capacity="<%= v.capacity %>" <%= order && order.vehicleId === v.id ? 'selected' : '' %>><%= v.regNo %> · <%= v.typeLabel %> · <%= v.capacity.toLocaleString('en-US') %> <%= v.unitLabel %></option><% }) %>
       </select>
     </label>
     <div class="form-row">

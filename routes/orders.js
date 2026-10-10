@@ -23,6 +23,14 @@ function findOrder(req) {
   return db.get().orders.find((o) => o.id === Number(req.params.id));
 }
 
+function vehiclesForForm(data) {
+  return data.vehicles.map((v) => ({
+    ...v,
+    typeLabel: db.fleetTypeLabel(data, v.type),
+    unitLabel: db.fleetTypeUnit(data, v.type),
+  }));
+}
+
 router.get('/orders', (req, res) => {
   let orders = visibleOrders(req);
   const status = req.query.status;
@@ -37,7 +45,7 @@ router.get('/orders/new', (req, res) => {
     order: null,
     customers: data.customers,
     materials: data.materials,
-    vehicles: data.vehicles,
+    vehicles: vehiclesForForm(data),
   });
 });
 
@@ -50,7 +58,7 @@ router.get('/orders/:id/edit', (req, res) => {
     order,
     customers: data.customers,
     materials: data.materials,
-    vehicles: data.vehicles,
+    vehicles: vehiclesForForm(data),
   });
 });
 

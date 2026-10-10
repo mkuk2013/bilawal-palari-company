@@ -7,11 +7,13 @@
     <label>Name
       <input type="text" name="name" required value="<%= editing ? editing.name : '' %>" placeholder="e.g. Coarse Aggregate">
     </label>
-    <label>Unit
-      <select name="unit">
-        <option value="CFT" <%= editing && editing.unit === 'CFT' ? 'selected' : '' %>>CFT</option>
-        <option value="gallon" <%= editing && editing.unit === 'gallon' ? 'selected' : '' %>>gallon</option>
-      </select>
+    <label>Unit (list se chunein ya apni unit likh dein)
+      <input type="text" name="unit" list="unit-options" required value="<%= editing ? editing.unit : 'CFT' %>" placeholder="e.g. CFT / gallon / Ton / Trip">
+      <datalist id="unit-options">
+        <% const units = ['CFT', 'gallon']; materials.forEach(m => { if (!units.includes(m.unit)) units.push(m.unit); }); units.forEach(u => { %>
+        <option value="<%= u %>"></option>
+        <% }) %>
+      </datalist>
     </label>
     <label>Default rate (Rs)
       <input type="number" name="rate" min="0" step="any" required value="<%= editing ? editing.rate : '' %>">

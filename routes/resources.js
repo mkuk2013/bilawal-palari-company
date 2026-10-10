@@ -9,21 +9,29 @@ router.use(requireLogin);
 /* ---------------- Fleet ---------------- */
 router.get('/fleet', (req, res) => {
   const data = db.get();
+  const types = db.fleetTypes(data);
   const editing = req.query.edit
     ? data.vehicles.find((v) => v.id === Number(req.query.edit)) || null
     : null;
-  res.render('fleet', {
-    title: 'Fleet',
-    dumpers: data.vehicles.filter((v) => v.type === 'dumper'),
-    tankers: data.vehicles.filter((v) => v.type === 'tanker'),
-    editing,
+  // Group vehicles by type: defined types in their order first, then any
+  // vehicles whose type is no longer defined, under their own heading.
+  const groups = types.map((t) => ({
+    key: t.key, label: t.label, unit: t.unit,
+    items: data.vehicles.filter((v) => v.type === t.key),
+  }));
+  data.vehicles.forEach((v) => {
+    if (!types.some((t) => t.key === v.type)) {
+      groups.push({ key: v.type, label: db.fleetTypeLabel(data, v.type), unit: '', items: [v] });
+    }
   });
+  res.render('fleet', { title: 'Fleet', types, groups, vehicles: data.vehicles, editing });
 });
 
 router.post('/fleet', (req, res) => {
   const data = db.get();
+  const types = db.fleetTypes(data);
   const regNo = String(req.body.regNo || '').trim().toUpperCase();
-  const type = req.body.type === 'tanker' ? 'tanker' : 'dumper';
+  const type = types.some((t) => t.key === req.body.type) ? req.body.type : (types[0] ? types[0].key : 'dumper');
   const capacity = Math.max(0, parseFloat(req.body.capacity) || 0);
   if (!regNo) return res.redirect('/fleet?error=Vehicle number is required.');
   if (req.body.id) {
@@ -34,6 +42,31 @@ router.post('/fleet', (req, res) => {
   }
   db.save();
   res.redirect('/fleet?msg=Vehicle saved.');
+});
+
+router.post('/fleet/types', (req, res) => {
+  const data = db.get();
+  const types = db.fleetTypes(data).slice();
+  const label = String(req.body.label || '').trim();
+  const unit = String(req.body.unit || '').trim();
+  if (!label) return res.redirect('/fleet?error=Type name is required.');
+  types.push({ key: db.fleetTypeSlug(label, types), label, unit, water: !!req.body.water });
+  data.fleetTypes = types;
+  db.save();
+  res.redirect('/fleet?msg=Fleet type added.');
+});
+
+router.post('/fleet/types/delete', (req, res) => {
+  const data = db.get();
+  const types = db.fleetTypes(data);
+  const key = String(req.body.key || '');
+  if (types.length <= 1) return res.redirect('/fleet?error=At least one fleet type must remain.');
+  if (data.vehicles.some((v) => v.type === key)) {
+    return res.redirect('/fleet?error=This type has vehicles — delete those vehicles or change their type first.');
+  }
+  data.fleetTypes = types.filter((t) => t.key !== key);
+  db.save();
+  res.redirect('/fleet?msg=Fleet type deleted.');
 });
 
 router.post('/fleet/:id/delete', (req, res) => {
@@ -55,7 +88,7 @@ router.get('/materials', (req, res) => {
 router.post('/materials', (req, res) => {
   const data = db.get();
   const name = String(req.body.name || '').trim();
-  const unit = req.body.unit === 'gallon' ? 'gallon' : 'CFT';
+  const unit = String(req.body.unit || '').trim() || 'CFT';
   const rate = Math.max(0, parseFloat(req.body.rate) || 0);
   if (!name) return res.redirect('/materials?error=Material name is required.');
   if (req.body.id) {

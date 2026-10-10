@@ -82,6 +82,10 @@ function seedData() {
       { id: 4, name: 'Sweet Water', unit: 'gallon', rate: 2.95 },
     ],
     vehicles,
+    fleetTypes: [
+      { key: 'dumper', label: 'Dumper', unit: 'CFT', water: false },
+      { key: 'tanker', label: 'Tanker', unit: 'Gallon', water: true },
+    ],
     orders: [],
     bills: [],
     seq: { user: 2, customer: 1, material: 4, vehicle: vid, order: 0, bill: 0 },
@@ -100,6 +104,16 @@ function load() {
           && db.company.preparedBy && db.company.preparedBy.name === 'Muhammad Raza') {
         db.company.preparedBy.name = 'Muhammad Samejo';
         db.company._preparedByMigrated = true;
+        save();
+      }
+      // Fleet types (owner request, 2026-10-10): installs seeded before
+      // dynamic fleet types existed get the two built-in types; the client
+      // can add more (Excavator, Crane, ...) from the Fleet page.
+      if (!Array.isArray(db.fleetTypes) || !db.fleetTypes.length) {
+        db.fleetTypes = [
+          { key: 'dumper', label: 'Dumper', unit: 'CFT', water: false },
+          { key: 'tanker', label: 'Tanker', unit: 'Gallon', water: true },
+        ];
         save();
       }
       return db;
@@ -136,4 +150,47 @@ function billNoFor(seq) {
   return 'J-' + String(seq).padStart(6, '0');
 }
 
-module.exports = { load, get: load, save, nextId, nextBillSeq, billNoFor, DATA_FILE };
+/* ---------------- Fleet types ----------------
+ * Fleet is not limited to dumpers and tankers: the client can register
+ * additional vehicle types (each with its own capacity unit) from the
+ * Fleet page. A type flagged "water" also appears in water-bill vehicle
+ * lists (the built-in Tanker type carries that flag). */
+const DEFAULT_FLEET_TYPES = [
+  { key: 'dumper', label: 'Dumper', unit: 'CFT', water: false },
+  { key: 'tanker', label: 'Tanker', unit: 'Gallon', water: true },
+];
+
+function fleetTypes(data) {
+  return Array.isArray(data.fleetTypes) && data.fleetTypes.length ? data.fleetTypes : DEFAULT_FLEET_TYPES;
+}
+
+function fleetTypeFind(data, key) {
+  return fleetTypes(data).find((t) => t.key === key) || null;
+}
+
+function fleetTypeLabel(data, key) {
+  const t = fleetTypeFind(data, key);
+  return t ? t.label : (key ? key.charAt(0).toUpperCase() + key.slice(1) : '—');
+}
+
+function fleetTypeUnit(data, key) {
+  const t = fleetTypeFind(data, key);
+  return t ? t.unit : '';
+}
+
+function fleetTypeIsWater(data, key) {
+  const t = fleetTypeFind(data, key);
+  return t ? !!t.water : key === 'tanker';
+}
+
+function fleetTypeSlug(label, types) {
+  let slug = String(label).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!slug) slug = 'type';
+  const taken = types.map((t) => t.key);
+  const base = slug;
+  let n = 2;
+  while (taken.includes(slug)) slug = `${base}-${n++}`;
+  return slug;
+}
+
+module.exports = { load, get: load, save, nextId, nextBillSeq, billNoFor, DATA_FILE, fleetTypes, fleetTypeFind, fleetTypeLabel, fleetTypeUnit, fleetTypeIsWater, fleetTypeSlug };

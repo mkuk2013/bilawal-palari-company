@@ -145,7 +145,7 @@ router.get('/bills/new/aggregate', (req, res) => {
     bill: null,
     nextBillNo: nextAutoBillNo(data),
     customers: data.customers,
-    materials: data.materials.filter((m) => m.unit === 'CFT'),
+    materials: data.materials.filter((m) => String(m.unit).toLowerCase() !== 'gallon'),
     vehicles: data.vehicles,
     today: todayISO(),
   });
@@ -180,13 +180,13 @@ router.post('/bills/aggregate', (req, res) => {
 
 router.get('/bills/new/water', (req, res) => {
   const data = db.get();
-  const water = data.materials.find((m) => m.unit === 'gallon');
+  const water = data.materials.find((m) => String(m.unit).toLowerCase() === 'gallon');
   res.render('bills/form-water', {
     title: 'New sweet water bill',
     bill: null,
     nextBillNo: nextAutoBillNo(data),
     customers: data.customers,
-    vehicles: data.vehicles.filter((v) => v.type === 'tanker'),
+    vehicles: data.vehicles.filter((v) => db.fleetTypeIsWater(data, v.type)),
     waterRate: water ? water.rate : 2.95,
     today: todayISO(),
   });
@@ -235,7 +235,7 @@ router.get('/bills/import/template', (req, res) => {
 
 router.get('/bills/import', (req, res) => {
   const data = db.get();
-  const water = data.materials.find((m) => m.unit === 'gallon');
+  const water = data.materials.find((m) => String(m.unit).toLowerCase() === 'gallon');
   res.render('bills/import', {
     title: 'Excel import',
     customers: data.customers,
@@ -257,18 +257,18 @@ router.get('/bills/:id/edit', (req, res) => {
       bill,
       nextBillNo: bill.billNo,
       customers: data.customers,
-      materials: data.materials.filter((m) => m.unit === 'CFT'),
+      materials: data.materials.filter((m) => String(m.unit).toLowerCase() !== 'gallon'),
       vehicles: data.vehicles,
       today: todayISO(),
     });
   }
-  const water = data.materials.find((m) => m.unit === 'gallon');
+  const water = data.materials.find((m) => String(m.unit).toLowerCase() === 'gallon');
   return res.render('bills/form-water', {
     title: `Edit bill ${bill.billNo}`,
     bill,
     nextBillNo: bill.billNo,
     customers: data.customers,
-    vehicles: data.vehicles.filter((v) => v.type === 'tanker'),
+    vehicles: data.vehicles.filter((v) => db.fleetTypeIsWater(data, v.type)),
     waterRate: water ? water.rate : 2.95,
     today: todayISO(),
   });
