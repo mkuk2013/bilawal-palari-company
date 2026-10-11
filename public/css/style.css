@@ -419,3 +419,11 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 
 /* ---------- Quick actions bar — center aligned ---------- */
 .quickbar-in { justify-content: center; flex-wrap: wrap; overflow-x: visible; }
+
+/* ---------- Header action buttons — clear gaps v2.3 ---------- */
+.actions-row { gap: 16px; }
+.row-between { row-gap: 12px; column-gap: 16px; }
+@media (max-width: 640px) {
+  .actions-row { gap: 12px; }
+  .actions-row .btn { flex: 1 1 auto; justify-content: center; }
+}
