@@ -427,3 +427,8 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   .actions-row { gap: 12px; }
   .actions-row .btn { flex: 1 1 auto; justify-content: center; }
 }
+
+/* ---------- Header action buttons — hard margins v2.4 ---------- */
+.actions-row { gap: 18px; padding: 4px 0; }
+.actions-row .btn { margin: 5px; }
+.row-between { padding: 2px 0 4px; }
