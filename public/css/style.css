@@ -390,3 +390,23 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   .inv-section td { padding: 10px 7px; }
   .inv-meta { margin-bottom: 18px; }
 }
+
+/* ---------- Quick actions bar — har page ke top par ---------- */
+.quickbar { background: #fff; border-bottom: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.quickbar-in {
+  max-width: 1080px; margin: 0 auto; padding: 9px 16px;
+  display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.quickbar-in::-webkit-scrollbar { display: none; }
+.qbar-btn {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 38px;
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fbfcfe; color: var(--navy); text-decoration: none;
+  font-weight: 700; font-size: .87rem; white-space: nowrap; box-shadow: var(--shadow-sm);
+  transition: border-color .15s ease, transform .15s ease;
+}
+.qbar-btn:hover { border-color: var(--gold); }
+.qbar-btn:active { transform: scale(.97); }
+.qbar-primary { background: linear-gradient(180deg, var(--navy-soft), var(--navy)); color: #fff; border-color: var(--navy-dark); }
+@media (min-width: 900px) { .quickbar-in { flex-wrap: wrap; overflow-x: visible; } }
+@media (max-width: 640px) { .quickbar-in { padding: 8px 12px; } }

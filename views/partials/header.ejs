@@ -8,7 +8,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/App%20icon%20192.png" type="image/png">
 <link rel="apple-touch-icon" href="/App%20icon%20192.png">
-<link rel="stylesheet" href="/css/style.css?v=4">
+<link rel="stylesheet" href="/css/style.css?v=5">
 </head>
 <body>
 <% if (currentUser) { %>
@@ -27,6 +27,16 @@
     <a class="btn btn-small btn-outline" href="/logout">Logout</a>
   </div>
 </header>
+<div class="quickbar no-print">
+  <div class="quickbar-in">
+    <a class="qbar-btn qbar-primary" href="/orders/new">🧾 Book an order</a>
+    <a class="qbar-btn" href="/bills/new/aggregate">🧱 Aggregate bill</a>
+    <a class="qbar-btn" href="/bills/new/water">💧 Sweet water bill</a>
+    <a class="qbar-btn" href="/bills/import">📥 Excel import</a>
+    <a class="qbar-btn" href="/customers">🏢 Companies</a>
+    <% if (currentUser.role === 'admin') { %><a class="qbar-btn" href="/admin">📊 Admin</a><% } %>
+  </div>
+</div>
 <% } %>
 <main class="container">
 <% if (msg) { %><div class="alert alert-ok no-print"><%= msg %></div><% } %>
