@@ -19,18 +19,6 @@
   <div class="card stat"><span class="stat-num"><%= stats.customers %></span><span class="stat-label">Companies</span></div>
 </section>
 
-<section class="card">
-  <h2>Quick actions</h2>
-  <div class="quick-actions">
-    <a class="qa-tile qa-primary" href="/orders/new"><span class="qa-ic">🧾</span><span>Book an order</span></a>
-    <a class="qa-tile" href="/bills/new/aggregate"><span class="qa-ic">🧱</span><span>Aggregate bill</span></a>
-    <a class="qa-tile" href="/bills/new/water"><span class="qa-ic">💧</span><span>Sweet water bill</span></a>
-    <a class="qa-tile" href="/bills/import"><span class="qa-ic">📥</span><span>Excel import</span></a>
-    <a class="qa-tile" href="/customers"><span class="qa-ic">🏢</span><span>Companies</span></a>
-    <% if (currentUser.role === 'admin') { %><a class="qa-tile" href="/admin"><span class="qa-ic">📊</span><span>Admin monitoring</span></a><% } %>
-  </div>
-</section>
-
 <div class="grid two">
   <section class="card">
     <h2>Recent orders</h2>

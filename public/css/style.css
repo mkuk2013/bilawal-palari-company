@@ -410,3 +410,9 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 .qbar-primary { background: linear-gradient(180deg, var(--navy-soft), var(--navy)); color: #fff; border-color: var(--navy-dark); }
 @media (min-width: 900px) { .quickbar-in { flex-wrap: wrap; overflow-x: visible; } }
 @media (max-width: 640px) { .quickbar-in { padding: 8px 12px; } }
+
+/* ---------- Bills actions spacing fix v2.2 ---------- */
+.actions-cell { white-space: normal; min-width: 138px; }
+.actions-cell .btn { margin: 3px 4px 3px 0; }
+.actions-cell form { margin: 3px 4px 3px 0; }
+.actions-row { gap: 10px; }
