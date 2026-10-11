@@ -31,11 +31,13 @@
         <tbody id="linesBody"></tbody>
       </table>
     </div>
-    <div class="row-between">
-      <button type="button" class="btn btn-ghost" id="addRowBtn">+ Add line</button>
-      <p class="amount-preview">Grand Total: <strong>Rs <span id="grandTotal">0.00</span></strong></p>
+    <div class="form-savebar no-print">
+      <div class="row-between">
+        <button type="button" class="btn btn-ghost" id="addRowBtn">+ Add line</button>
+        <p class="amount-preview">Grand Total: <strong>Rs <span id="grandTotal">0.00</span></strong></p>
+      </div>
+      <button type="submit" class="btn btn-gold btn-block"><%= bill ? 'Update bill' : 'Save bill' %></button>
     </div>
-    <button type="submit" class="btn btn-gold btn-block"><%= bill ? 'Update bill' : 'Save bill' %></button>
   </form>
 </section>
 
