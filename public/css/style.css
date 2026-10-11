@@ -416,3 +416,6 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 .actions-cell .btn { margin: 3px 4px 3px 0; }
 .actions-cell form { margin: 3px 4px 3px 0; }
 .actions-row { gap: 10px; }
+
+/* ---------- Quick actions bar — center aligned ---------- */
+.quickbar-in { justify-content: center; flex-wrap: wrap; overflow-x: visible; }
