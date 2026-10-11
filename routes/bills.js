@@ -3,7 +3,7 @@ const express = require('express');
 const db = require('../src/db');
 const { requireLogin, isOwnerOrAdmin } = require('../src/middleware');
 const { round2, todayISO, amountInWords, fmt, fmtDate, billCategoryLabel, waterCategoryFrom } = require('../src/utils');
-const { rowsToXlsx } = require('../src/xlsx');
+const { sheetsToXlsx } = require('../src/xlsx');
 
 const router = express.Router();
 router.use(requireLogin);
@@ -449,7 +449,49 @@ router.get('/bills/:id/excel', (req, res) => {
   R.push([]);
   R.push([S('Terms & Conditions: ' + company.terms)]); M.push(`A${R.length}:J${R.length}`);
 
-  const buf = rowsToXlsx(R, 'Bill ' + bill.billNo, M, H);
+  /* ---- Sheet 2 "Data": one real Excel Table (filters, banded rows, totals) ---- */
+  const xlsxSerial = (iso) => {
+    const t = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+    const ms = Date.parse(t + 'T00:00:00Z');
+    if (Number.isNaN(ms)) return null;
+    return Math.floor(ms / 86400000) + 25569;
+  };
+  const perHdr = isWater ? 'Gln' : 'Per Trip Cft';
+  const qtyHdr = isWater ? 'Qty' : 'Total Cft';
+  const R2 = [];
+  R2.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Section', 'Trip', perHdr, qtyHdr, 'Rate', 'Amount'].map((h) => [h, 's', 10]));
+  for (const g of groups) {
+    for (const l of g.lines) {
+      const serial = xlsxSerial(l.date || '');
+      const dateCell = serial !== null ? [serial, 'n', 27] : ['', 's', 0];
+      if (isWater) {
+        R2.push([[l.sno, 'n', 28], dateCell, [l.vehNo || '', 's', 0], [l.dcNo || '', 's', 0], ['Water', 's', 0], [g.key, 's', 0],
+          [l.trip || 0, 'n', 28], [l.gallons || 0, 'n', 2], [l.qty || 0, 'n', 2], [l.rate || 0, 'n', 2], [l.amount || 0, 'n', 2]]);
+      } else {
+        R2.push([[l.sno, 'n', 28], dateCell, [l.vehNo || '', 's', 0], [l.dcNo || '', 's', 0], [l.description || '', 's', 0], [g.key, 's', 0],
+          [l.trip || 0, 'n', 28], [l.perTripCft || 0, 'n', 2], [l.totalCft || 0, 'n', 2], [l.rate || 0, 'n', 2], [l.amount || 0, 'n', 2]]);
+      }
+    }
+  }
+  const totalRowNo = R2.length + 1;
+  R2.push([['Total', 's', 1], E, E, E, E, E, E, E, E, E, { f: 'SUBTOTAL(109,BillData[Amount])', v: Number(bill.total) || 0, s: 3 }]);
+  const tableCols = ['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Section', 'Trip', perHdr, qtyHdr, 'Rate', 'Amount'];
+  let tableXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + `<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="BillData" displayName="BillData" ref="A1:K${totalRowNo}" totalsRowCount="1">`
+    + `<autoFilter ref="A1:K${totalRowNo - 1}"/><tableColumns count="11">`;
+  tableCols.forEach((cn, i) => {
+    let attrs = ` id="${i + 1}" name="${cn}"`;
+    if (i === 0) attrs += ' totalsRowLabel="Total"';
+    if (i === 10) attrs += ' totalsRowFunction="sum"';
+    tableXml += `<tableColumn${attrs}/>`;
+  });
+  tableXml += '</tableColumns><tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
+
+  const buf = sheetsToXlsx([
+    { name: 'Bill ' + bill.billNo, rows: R, merges: M, heights: H, freeze: 10, widths: [8, 14, 13, 12, 34, 9, 14, 15, 12, 17] },
+    { name: 'Data', rows: R2, merges: [], heights: {}, freeze: 1, widths: [8, 13, 13, 12, 30, 22, 8, 13, 14, 11, 16], tableXml },
+  ]);
   const safeNo = String(bill.billNo).replace(/[^A-Za-z0-9_-]+/g, '-');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="Bill-${safeNo}.xlsx"`);
