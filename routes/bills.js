@@ -356,7 +356,7 @@ function showBill(req, res, autoprint) {
 router.get('/bills/:id', (req, res) => showBill(req, res, false));
 router.get('/bills/:id/print', (req, res) => showBill(req, res, true));
 
-/* ---- Excel (.xlsx) download — same layout as the printed invoice ---- */
+/* ---- Excel (.xlsx) download — printed-invoice layout, professionally styled ---- */
 router.get('/bills/:id/excel', (req, res) => {
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
@@ -369,62 +369,87 @@ router.get('/bills/:id/excel', (req, res) => {
   const totalsQty = isWater ? round2(bill.lines.reduce((sum, l) => sum + (Number(l.qty) || 0), 0)) : 0;
 
   const S = (v) => [String(v ?? ''), 's', 0];
-  const SB = (v) => [String(v ?? ''), 's', 1];
-  const SH = (v) => [String(v ?? ''), 's', 2];
-  const N = (v) => [Number(v) || 0, 'n', 3];
-  const NB = (v) => [Number(v) || 0, 'n', 4];
-  const I = (v) => [parseInt(v, 10) || 0, 'n', 0];
+  const T = (v, st) => [String(v ?? ''), 's', st];
+  const N = (v, st) => [Number(v) || 0, 'n', st];
+  const FL = (st) => ['', 's', st];
   const E = null;
   const R = [];
-  R.push([SB(String(company.name).toUpperCase())]);
-  R.push([S(company.tagline)]);
-  R.push([S(`Office: ${company.office} · Ph: ${company.invoicePhone} · Email: ${company.email} · NTN: ${company.ntn}`)]);
+  const M = [];
+  const H = {};
+  R.push([T(String(company.name).toUpperCase(), 4)]); M.push('A1:J1'); H[1] = 30;
+  R.push([T(company.tagline, 5)]); M.push('A2:J2');
+  R.push([T(`Office: ${company.office} · Ph: ${company.invoicePhone} · Email: ${company.email} · NTN: ${company.ntn}`, 6)]); M.push('A3:J3');
   R.push([]);
-  R.push([SB('BILL INVOICE' + (isWater ? ' — ' + billCategoryLabel(bill).toUpperCase() : ''))]);
-  R.push([S('Bill To: ' + bill.customerName), E, E, S('Project: ' + bill.project)]);
-  if (isWater) R.push([S(`Billing Period: ${fmtDate(bill.periodFrom)} to ${fmtDate(bill.periodTo)}`), E, E, S('PO No: ' + (bill.poNo || '—'))]);
-  else R.push([S('Billing Month: ' + (bill.billingMonth || '—'))]);
-  R.push([S('Bill No: ' + bill.billNo), E, E, S('Date Issued: ' + fmtDate(bill.dateIssued))]);
+  R.push([T('BILL INVOICE' + (isWater ? ' — ' + billCategoryLabel(bill).toUpperCase() : ''), 7)]); M.push('A5:J5'); H[5] = 26;
+  R.push([T('Bill To: ' + bill.customerName, 8), E, E, T('Project: ' + bill.project, 8)]); M.push('A6:C6', 'D6:J6');
+  if (isWater) { R.push([T(`Billing Period: ${fmtDate(bill.periodFrom)} to ${fmtDate(bill.periodTo)}`, 8), E, E, T('PO No: ' + (bill.poNo || '—'), 8)]); M.push('A7:C7', 'D7:J7'); }
+  else { R.push([T('Billing Month: ' + (bill.billingMonth || '—'), 8)]); M.push('A7:J7'); }
+  R.push([T('Bill No: ' + bill.billNo, 8), E, E, T('Date Issued: ' + fmtDate(bill.dateIssued), 8)]); M.push('A8:C8', 'D8:J8');
   R.push([]);
+
+  let stripe = 0;
+  const dataRow = (cells) => {
+    const z = stripe % 2 === 1;
+    R.push(cells.map((c) => [c[0], c[1], z ? c[3] : c[2]]));
+    stripe++;
+  };
 
   if (!isWater) {
-    R.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Trip', 'Per Trip Cft', 'Total Cft', 'Rate (Rs.)', 'Amount (Rs.)'].map(SH));
+    R.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Trip', 'Per Trip Cft', 'Total Cft', 'Rate (Rs.)', 'Amount (Rs.)'].map((h) => [h, 's', 10]));
+    H[R.length] = 22;
     for (const g of groups) {
-      R.push([SH(String(g.key).toUpperCase())]);
+      R.push([T(String(g.key).toUpperCase(), 11)]); M.push(`A${R.length}:J${R.length}`);
       for (const l of g.lines) {
-        R.push([I(l.sno), S(fmtDate(l.date || '')), S(l.vehNo || ''), S(l.dcNo || ''), S(l.description || ''),
-          I(l.trip || 0), N(l.perTripCft || 0), N(l.totalCft || 0), N(l.rate || 0), N(l.amount || 0)]);
+        dataRow([
+          [l.sno, 'n', 14, 15], [fmtDate(l.date || ''), 's', 14, 15], [l.vehNo || '', 's', 14, 15], [l.dcNo || '', 's', 14, 15],
+          [l.description || '', 's', 12, 13], [l.trip || 0, 'n', 18, 19], [l.perTripCft || 0, 'n', 16, 17], [l.totalCft || 0, 'n', 16, 17],
+          [l.rate || 0, 'n', 16, 17], [l.amount || 0, 'n', 16, 17],
+        ]);
       }
       const qtySum = fmt(g.lines.reduce((sum, x) => sum + (Number(x.totalCft) || 0), 0));
-      R.push([SB(`${g.key} Total — ${g.trips} dumper/trip(s) · ${qtySum} Cft`), E, E, E, E, E, E, E, E, NB(g.amount)]);
+      R.push([T(`${g.key} Total — ${g.trips} dumper/trip(s) · ${qtySum} Cft`, 20), FL(20), FL(20), FL(20), FL(20), FL(20), FL(20), FL(20), FL(20), N(g.amount, 21)]);
+      M.push(`A${R.length}:I${R.length}`);
     }
     R.push([]);
-    R.push([SB('SUMMARY OF TOTALS')]);
-    for (const g of groups) R.push([S(g.key), E, E, E, E, E, E, E, E, N(g.amount)]);
-    R.push([SB('GRAND TOTAL'), E, E, E, E, E, E, E, E, NB(bill.total)]);
-    R.push([S('Amount in Words: ' + words)]);
-  } else {
-    R.push(['Sr#', 'Date', 'Veh No', 'DC #', 'Description', 'Trip', 'Gln', 'Qty', 'Rate', 'Amount (Rs.)'].map(SH));
+    R.push([T('SUMMARY OF TOTALS', 1)]);
     for (const g of groups) {
-      R.push([SH('VEHICLE: ' + g.key)]);
+      R.push([T(g.key, 12), FL(12), FL(12), FL(12), FL(12), FL(12), FL(12), FL(12), FL(12), N(g.amount, 16)]);
+      M.push(`A${R.length}:I${R.length}`);
+    }
+    R.push([T('GRAND TOTAL', 23), FL(23), FL(23), FL(23), FL(23), FL(23), FL(23), FL(23), FL(23), N(bill.total, 24)]);
+    M.push(`A${R.length}:I${R.length}`);
+    R.push([T('Amount in Words: ' + words, 26)]); M.push(`A${R.length}:J${R.length}`);
+  } else {
+    R.push(['Sr#', 'Date', 'Veh No', 'DC #', 'Description', 'Trip', 'Gln', 'Qty', 'Rate', 'Amount (Rs.)'].map((h) => [h, 's', 10]));
+    H[R.length] = 22;
+    for (const g of groups) {
+      R.push([T('VEHICLE: ' + g.key, 11)]); M.push(`A${R.length}:J${R.length}`);
       for (const l of g.lines) {
-        R.push([I(l.sno), S(fmtDate(l.date || '')), S(l.vehNo || ''), S(l.dcNo || ''), S('Water'),
-          I(l.trip || 0), N(l.gallons || 0), N(l.qty || 0), N(l.rate || 0), N(l.amount || 0)]);
+        dataRow([
+          [l.sno, 'n', 14, 15], [fmtDate(l.date || ''), 's', 14, 15], [l.vehNo || '', 's', 14, 15], [l.dcNo || '', 's', 14, 15],
+          ['Water', 's', 12, 13], [l.trip || 0, 'n', 18, 19], [l.gallons || 0, 'n', 16, 17], [l.qty || 0, 'n', 16, 17],
+          [l.rate || 0, 'n', 16, 17], [l.amount || 0, 'n', 16, 17],
+        ]);
       }
       const qtySum = g.lines.reduce((sum, x) => sum + (Number(x.qty) || 0), 0);
-      R.push([SB('TOTAL Trips — ' + g.key), E, E, E, E, I(g.trips), E, N(qtySum), E, NB(g.amount)]);
+      R.push([T('TOTAL Trips — ' + g.key, 20), FL(20), FL(20), FL(20), FL(20), N(g.trips, 22), FL(20), N(qtySum, 21), FL(20), N(g.amount, 21)]);
+      M.push(`A${R.length}:E${R.length}`);
     }
-    R.push([SB('GRAND TOTAL'), E, E, E, E, I(totalsTrips), E, N(totalsQty), E, NB(bill.total)]);
-    R.push([S('Amount in Words: ' + words)]);
+    R.push([T('GRAND TOTAL', 23), FL(23), FL(23), FL(23), FL(23), N(totalsTrips, 25), FL(23), N(totalsQty, 24), FL(23), N(bill.total, 24)]);
+    M.push(`A${R.length}:E${R.length}`);
+    R.push([T('Amount in Words: ' + words, 26)]); M.push(`A${R.length}:J${R.length}`);
   }
   R.push([]);
-  R.push([S('Prepared By:'), E, E, S('Approved By:')]);
+  const signRow = R.length + 1;
+  R.push([T('Prepared By:', 1), E, E, E, E, T('Approved By:', 1)]);
+  M.push(`A${signRow}:E${signRow}`, `F${signRow}:J${signRow}`);
   R.push([S(`Name: ${company.preparedBy.name} · Designation: ${company.preparedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`),
-    E, E, S(`Name: ${company.approvedBy.name} · Designation: ${company.approvedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`)]);
+    E, E, E, E, S(`Name: ${company.approvedBy.name} · Designation: ${company.approvedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`)]);
+  M.push(`A${signRow + 1}:E${signRow + 1}`, `F${signRow + 1}:J${signRow + 1}`);
   R.push([]);
-  R.push([S('Terms & Conditions: ' + company.terms)]);
+  R.push([S('Terms & Conditions: ' + company.terms)]); M.push(`A${R.length}:J${R.length}`);
 
-  const buf = rowsToXlsx(R, 'Bill ' + bill.billNo);
+  const buf = rowsToXlsx(R, 'Bill ' + bill.billNo, M, H);
   const safeNo = String(bill.billNo).replace(/[^A-Za-z0-9_-]+/g, '-');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="Bill-${safeNo}.xlsx"`);
