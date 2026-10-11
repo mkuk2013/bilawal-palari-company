@@ -362,3 +362,31 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
   .inv-table { font-size: .72rem; }
   .inv-table-scroll { overflow: visible; }
 }
+
+/* ---------- Spacing pass v2.1 (2026-10-11) ----------
+   Owner feedback: sections ki rows chipki hui lagti theen —
+   table rows, section cards aur list rows ko saans di hai. */
+.card { margin-bottom: 22px; }
+.card > h2, .card > h3 { margin-bottom: 14px; }
+.grid { gap: 16px; }
+.quick-actions { gap: 12px; }
+.subtabs { margin-bottom: 18px; }
+.chips { margin-bottom: 18px; }
+.table th, .table td { padding: 13px 11px; line-height: 1.55; }
+.table-wrap { margin-bottom: 6px; }
+.simple-list li { padding: 12px 0; }
+.hero { margin-bottom: 20px; }
+.alert { margin-bottom: 18px; }
+.filter-row { margin-bottom: 16px; gap: 10px; }
+.form label { margin-bottom: 14px; }
+.lines-table input, .lines-table select { min-height: 42px; }
+@media (max-width: 640px) {
+  .table th, .table td { padding: 12px 10px; }
+  .card { margin-bottom: 18px; }
+}
+/* Invoice rows: sirf screen par zyada saans — print bilkul waisa hi. */
+@media screen {
+  .inv-table td { padding: 8px 7px; }
+  .inv-section td { padding: 10px 7px; }
+  .inv-meta { margin-bottom: 18px; }
+}
