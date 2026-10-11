@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../src/db');
 const { requireLogin, isOwnerOrAdmin } = require('../src/middleware');
 const { round2, todayISO, amountInWords, fmt, fmtDate, billCategoryLabel, waterCategoryFrom } = require('../src/utils');
+const { rowsToXlsx } = require('../src/xlsx');
 
 const router = express.Router();
 router.use(requireLogin);
@@ -354,6 +355,81 @@ function showBill(req, res, autoprint) {
 
 router.get('/bills/:id', (req, res) => showBill(req, res, false));
 router.get('/bills/:id/print', (req, res) => showBill(req, res, true));
+
+/* ---- Excel (.xlsx) download — same layout as the printed invoice ---- */
+router.get('/bills/:id/excel', (req, res) => {
+  const bill = findBill(req);
+  if (!bill) return res.redirect('/bills?error=Bill not found.');
+  const data = db.get();
+  const company = data.company;
+  const groups = buildGroups(bill);
+  const isWater = bill.type === 'water';
+  const words = amountInWords(bill.total);
+  const totalsTrips = bill.lines.reduce((sum, l) => sum + (Number(l.trip) || 0), 0);
+  const totalsQty = isWater ? round2(bill.lines.reduce((sum, l) => sum + (Number(l.qty) || 0), 0)) : 0;
+
+  const S = (v) => [String(v ?? ''), 's', 0];
+  const SB = (v) => [String(v ?? ''), 's', 1];
+  const SH = (v) => [String(v ?? ''), 's', 2];
+  const N = (v) => [Number(v) || 0, 'n', 3];
+  const NB = (v) => [Number(v) || 0, 'n', 4];
+  const I = (v) => [parseInt(v, 10) || 0, 'n', 0];
+  const E = null;
+  const R = [];
+  R.push([SB(String(company.name).toUpperCase())]);
+  R.push([S(company.tagline)]);
+  R.push([S(`Office: ${company.office} · Ph: ${company.invoicePhone} · Email: ${company.email} · NTN: ${company.ntn}`)]);
+  R.push([]);
+  R.push([SB('BILL INVOICE' + (isWater ? ' — ' + billCategoryLabel(bill).toUpperCase() : ''))]);
+  R.push([S('Bill To: ' + bill.customerName), E, E, S('Project: ' + bill.project)]);
+  if (isWater) R.push([S(`Billing Period: ${fmtDate(bill.periodFrom)} to ${fmtDate(bill.periodTo)}`), E, E, S('PO No: ' + (bill.poNo || '—'))]);
+  else R.push([S('Billing Month: ' + (bill.billingMonth || '—'))]);
+  R.push([S('Bill No: ' + bill.billNo), E, E, S('Date Issued: ' + fmtDate(bill.dateIssued))]);
+  R.push([]);
+
+  if (!isWater) {
+    R.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Trip', 'Per Trip Cft', 'Total Cft', 'Rate (Rs.)', 'Amount (Rs.)'].map(SH));
+    for (const g of groups) {
+      R.push([SH(String(g.key).toUpperCase())]);
+      for (const l of g.lines) {
+        R.push([I(l.sno), S(fmtDate(l.date || '')), S(l.vehNo || ''), S(l.dcNo || ''), S(l.description || ''),
+          I(l.trip || 0), N(l.perTripCft || 0), N(l.totalCft || 0), N(l.rate || 0), N(l.amount || 0)]);
+      }
+      const qtySum = fmt(g.lines.reduce((sum, x) => sum + (Number(x.totalCft) || 0), 0));
+      R.push([SB(`${g.key} Total — ${g.trips} dumper/trip(s) · ${qtySum} Cft`), E, E, E, E, E, E, E, E, NB(g.amount)]);
+    }
+    R.push([]);
+    R.push([SB('SUMMARY OF TOTALS')]);
+    for (const g of groups) R.push([S(g.key), E, E, E, E, E, E, E, E, N(g.amount)]);
+    R.push([SB('GRAND TOTAL'), E, E, E, E, E, E, E, E, NB(bill.total)]);
+    R.push([S('Amount in Words: ' + words)]);
+  } else {
+    R.push(['Sr#', 'Date', 'Veh No', 'DC #', 'Description', 'Trip', 'Gln', 'Qty', 'Rate', 'Amount (Rs.)'].map(SH));
+    for (const g of groups) {
+      R.push([SH('VEHICLE: ' + g.key)]);
+      for (const l of g.lines) {
+        R.push([I(l.sno), S(fmtDate(l.date || '')), S(l.vehNo || ''), S(l.dcNo || ''), S('Water'),
+          I(l.trip || 0), N(l.gallons || 0), N(l.qty || 0), N(l.rate || 0), N(l.amount || 0)]);
+      }
+      const qtySum = g.lines.reduce((sum, x) => sum + (Number(x.qty) || 0), 0);
+      R.push([SB('TOTAL Trips — ' + g.key), E, E, E, E, I(g.trips), E, N(qtySum), E, NB(g.amount)]);
+    }
+    R.push([SB('GRAND TOTAL'), E, E, E, E, I(totalsTrips), E, N(totalsQty), E, NB(bill.total)]);
+    R.push([S('Amount in Words: ' + words)]);
+  }
+  R.push([]);
+  R.push([S('Prepared By:'), E, E, S('Approved By:')]);
+  R.push([S(`Name: ${company.preparedBy.name} · Designation: ${company.preparedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`),
+    E, E, S(`Name: ${company.approvedBy.name} · Designation: ${company.approvedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`)]);
+  R.push([]);
+  R.push([S('Terms & Conditions: ' + company.terms)]);
+
+  const buf = rowsToXlsx(R, 'Bill ' + bill.billNo);
+  const safeNo = String(bill.billNo).replace(/[^A-Za-z0-9_-]+/g, '-');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="Bill-${safeNo}.xlsx"`);
+  res.send(buf);
+});
 
 router.post('/bills/:id/toggle-paid', (req, res) => {
   const bill = findBill(req);
