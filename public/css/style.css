@@ -432,3 +432,6 @@ h3 { font-size: 1.05rem; margin-top: 18px; }
 .actions-row { gap: 18px; padding: 4px 0; }
 .actions-row .btn { margin: 5px; }
 .row-between { padding: 2px 0 4px; }
+
+/* ---------- Button icons ---------- */
+.btn .bico { font-size: 1.05em; line-height: 1; }

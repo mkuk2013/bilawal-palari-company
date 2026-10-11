@@ -3,7 +3,7 @@
 // Register the service worker (PWA).
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   });
 }
 
@@ -236,3 +236,45 @@ function initBillForm() {
     addRow(); // start with one blank line
   }
 }
+
+/* ---------- Button icons — har button ke sath us ka icon ---------- */
+(function () {
+  var RULES = [
+    [/print/, '🖨️'],
+    [/excel|import/, '📥'],
+    [/upload/, '📤'],
+    [/aggregate/, '🧱'],
+    [/water/, '💧'],
+    [/view/, '👁️'],
+    [/edit/, '✏️'],
+    [/delete/, '🗑️'],
+    [/save/, '💾'],
+    [/filter|search/, '🔍'],
+    [/clear|cancel/, '✖️'],
+    [/add line/, '➕'],
+    [/book/, '🧾'],
+    [/password/, '🔑'],
+    [/logout/, '🚪'],
+    [/login|sign in/, '🔐'],
+    [/back/, '⬅️'],
+    [/approve/, '✅'],
+    [/reject/, '❌'],
+    [/replace/, '🔁'],
+    [/download/, '⬇️'],
+    [/add|new/, '➕']
+  ];
+  var EMOJI_FIRST = /^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
+  function decorate(btn) {
+    if (btn.classList.contains('qbar-btn') || btn.classList.contains('btn-line-del')) return;
+    var text = (btn.textContent || '').trim();
+    if (!text || EMOJI_FIRST.test(text)) return;
+    var lower = text.toLowerCase();
+    for (var i = 0; i < RULES.length; i++) {
+      if (RULES[i][0].test(lower)) {
+        btn.insertAdjacentHTML('afterbegin', '<span class="bico" aria-hidden="true">' + RULES[i][1] + '</span>');
+        return;
+      }
+    }
+  }
+  document.querySelectorAll('a.btn, button.btn').forEach(decorate);
+})();
