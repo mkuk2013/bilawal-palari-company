@@ -332,10 +332,26 @@ function buildGroups(bill) {
   return groups;
 }
 
+// Machinery bills ("Working" lines billed per hour) print like the
+// client's own sheet: hours in their own Hr column.
+function hrLineChecker(materials) {
+  const nk = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const units = new Map();
+  (materials || []).forEach((m) => units.set(nk(m.name), String(m.unit || '')));
+  return (desc) => {
+    const u = units.get(nk(desc || ''));
+    if (u) return u.toLowerCase() === 'hour';
+    return /\bworking\b/i.test(String(desc || ''));
+  };
+}
+
 function showBill(req, res, autoprint) {
   const bill = findBill(req);
   if (!bill) return res.redirect('/bills?error=Bill not found.');
   const groups = buildGroups(bill);
+  const isHrLine = hrLineChecker(db.get().materials);
+  const machinery = bill.type === 'aggregate' && bill.lines.some((l) => isHrLine(l.description));
+  groups.forEach((g) => g.lines.forEach((l) => { l.hr = isHrLine(l.description); }));
   const totals = {
     trips: bill.lines.reduce((s, l) => s + (Number(l.trip) || 0), 0),
     gallons: bill.type === 'water' ? round2(bill.lines.reduce((s, l) => s + l.qty, 0)) : 0,
@@ -344,6 +360,7 @@ function showBill(req, res, autoprint) {
     title: `Bill ${bill.billNo}`,
     bill,
     groups,
+    machinery,
     totals,
     autoprint,
     words: amountInWords(bill.total),
@@ -364,6 +381,9 @@ router.get('/bills/:id/excel', (req, res) => {
   const company = data.company;
   const groups = buildGroups(bill);
   const isWater = bill.type === 'water';
+  const isHrLine = hrLineChecker(data.materials);
+  const machinery = !isWater && bill.lines.some((l) => isHrLine(l.description));
+  const LC = machinery ? 'I' : 'J'; // last column letter of sheet 1
   const words = amountInWords(bill.total);
   const totalsTrips = bill.lines.reduce((sum, l) => sum + (Number(l.trip) || 0), 0);
   const totalsQty = isWater ? round2(bill.lines.reduce((sum, l) => sum + (Number(l.qty) || 0), 0)) : 0;
@@ -376,15 +396,15 @@ router.get('/bills/:id/excel', (req, res) => {
   const R = [];
   const M = [];
   const H = {};
-  R.push([T(String(company.name).toUpperCase(), 4)]); M.push('A1:J1'); H[1] = 30;
-  R.push([T(company.tagline, 5)]); M.push('A2:J2');
-  R.push([T(`Office: ${company.office} · Ph: ${company.invoicePhone} · Email: ${company.email} · NTN: ${company.ntn}`, 6)]); M.push('A3:J3');
+  R.push([T(String(company.name).toUpperCase(), 4)]); M.push(`A1:${LC}1`); H[1] = 30;
+  R.push([T(company.tagline, 5)]); M.push(`A2:${LC}2`);
+  R.push([T(`Office: ${company.office} · Ph: ${company.invoicePhone} · Email: ${company.email} · NTN: ${company.ntn}`, 6)]); M.push(`A3:${LC}3`);
   R.push([]);
-  R.push([T('BILL INVOICE' + (isWater ? ' — ' + billCategoryLabel(bill).toUpperCase() : ''), 7)]); M.push('A5:J5'); H[5] = 26;
-  R.push([T('Bill To: ' + bill.customerName, 8), E, E, T('Project: ' + bill.project, 8)]); M.push('A6:C6', 'D6:J6');
-  if (isWater) { R.push([T(`Billing Period: ${fmtDate(bill.periodFrom)} to ${fmtDate(bill.periodTo)}`, 8), E, E, T('PO No: ' + (bill.poNo || '—'), 8)]); M.push('A7:C7', 'D7:J7'); }
-  else { R.push([T('Billing Month: ' + (bill.billingMonth || '—'), 8)]); M.push('A7:J7'); }
-  R.push([T('Bill No: ' + bill.billNo, 8), E, E, T('Date Issued: ' + fmtDate(bill.dateIssued), 8)]); M.push('A8:C8', 'D8:J8');
+  R.push([T('BILL INVOICE' + (isWater ? ' — ' + billCategoryLabel(bill).toUpperCase() : ''), 7)]); M.push(`A5:${LC}5`); H[5] = 26;
+  R.push([T('Bill To: ' + bill.customerName, 8), E, E, T('Project: ' + bill.project, 8)]); M.push('A6:C6', `D6:${LC}6`);
+  if (isWater) { R.push([T(`Billing Period: ${fmtDate(bill.periodFrom)} to ${fmtDate(bill.periodTo)}`, 8), E, E, T('PO No: ' + (bill.poNo || '—'), 8)]); M.push('A7:C7', `D7:${LC}7`); }
+  else { R.push([T('Billing Month: ' + (bill.billingMonth || '—'), 8)]); M.push(`A7:${LC}7`); }
+  R.push([T('Bill No: ' + bill.billNo, 8), E, E, T('Date Issued: ' + fmtDate(bill.dateIssued), 8)]); M.push('A8:C8', `D8:${LC}8`);
   R.push([]);
 
   let stripe = 0;
@@ -394,7 +414,38 @@ router.get('/bills/:id/excel', (req, res) => {
     stripe++;
   };
 
-  if (!isWater) {
+  if (!isWater && machinery) {
+    R.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Hr', 'Qty', 'Rate (Rs.)', 'Amount (Rs.)'].map((h) => [h, 's', 10]));
+    H[R.length] = 22;
+    for (const g of groups) {
+      R.push([T(String(g.key).toUpperCase(), 11)]); M.push(`A${R.length}:I${R.length}`);
+      let gHr = 0, gQty = 0;
+      for (const l of g.lines) {
+        const hr = isHrLine(l.description);
+        const q = Number(l.perTripCft) || 0;
+        if (hr) gHr += q; else gQty += q;
+        dataRow([
+          [l.sno, 'n', 14, 15], [fmtDate(l.date || ''), 's', 14, 15], [l.vehNo || '', 's', 14, 15], [l.dcNo || '', 's', 14, 15],
+          [l.description || '', 's', 12, 13],
+          hr ? [q, 'n', 16, 17] : ['', 's', 12, 13],
+          hr ? ['', 's', 12, 13] : [q, 'n', 16, 17],
+          [l.rate || 0, 'n', 16, 17], [l.amount || 0, 'n', 16, 17],
+        ]);
+      }
+      const lbl = `${g.key} Total` + (gHr > 0 ? ` — ${fmt(gHr)} Hr` : '') + (gQty > 0 ? ` — Qty ${fmt(gQty)}` : '');
+      R.push([T(lbl, 20), FL(20), FL(20), FL(20), FL(20), FL(20), FL(20), FL(20), N(g.amount, 21)]);
+      M.push(`A${R.length}:H${R.length}`);
+    }
+    R.push([]);
+    R.push([T('SUMMARY OF TOTALS', 1)]);
+    for (const g of groups) {
+      R.push([T(g.key, 12), FL(12), FL(12), FL(12), FL(12), FL(12), FL(12), FL(12), N(g.amount, 16)]);
+      M.push(`A${R.length}:H${R.length}`);
+    }
+    R.push([T('GRAND TOTAL', 23), FL(23), FL(23), FL(23), FL(23), FL(23), FL(23), FL(23), N(bill.total, 24)]);
+    M.push(`A${R.length}:H${R.length}`);
+    R.push([T('Amount in Words: ' + words, 26)]); M.push(`A${R.length}:I${R.length}`);
+  } else if (!isWater) {
     R.push(['S.No', 'Date', 'Veh No', 'DC No', 'Description', 'Trip', 'Per Trip Cft', 'Total Cft', 'Rate (Rs.)', 'Amount (Rs.)'].map((h) => [h, 's', 10]));
     H[R.length] = 22;
     for (const g of groups) {
@@ -442,12 +493,12 @@ router.get('/bills/:id/excel', (req, res) => {
   R.push([]);
   const signRow = R.length + 1;
   R.push([T('Prepared By:', 1), E, E, E, E, T('Approved By:', 1)]);
-  M.push(`A${signRow}:E${signRow}`, `F${signRow}:J${signRow}`);
+  M.push(`A${signRow}:E${signRow}`, `F${signRow}:${LC}${signRow}`);
   R.push([S(`Name: ${company.preparedBy.name} · Designation: ${company.preparedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`),
     E, E, E, E, S(`Name: ${company.approvedBy.name} · Designation: ${company.approvedBy.designation} · Date: ${fmtDate(bill.dateIssued)}`)]);
-  M.push(`A${signRow + 1}:E${signRow + 1}`, `F${signRow + 1}:J${signRow + 1}`);
+  M.push(`A${signRow + 1}:E${signRow + 1}`, `F${signRow + 1}:${LC}${signRow + 1}`);
   R.push([]);
-  R.push([S('Terms & Conditions: ' + company.terms)]); M.push(`A${R.length}:J${R.length}`);
+  R.push([S('Terms & Conditions: ' + company.terms)]); M.push(`A${R.length}:${LC}${R.length}`);
 
   /* ---- Sheet 2 "Data": one real Excel Table (filters, banded rows, totals) ---- */
   const xlsxSerial = (iso) => {
@@ -489,7 +540,7 @@ router.get('/bills/:id/excel', (req, res) => {
   tableXml += '</tableColumns><tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>';
 
   const buf = sheetsToXlsx([
-    { name: 'Bill ' + bill.billNo, rows: R, merges: M, heights: H, freeze: 10, widths: [8, 14, 13, 12, 34, 9, 14, 15, 12, 17] },
+    { name: 'Bill ' + bill.billNo, rows: R, merges: M, heights: H, freeze: 10, widths: machinery ? [8, 14, 13, 12, 34, 10, 10, 12, 17] : [8, 14, 13, 12, 34, 9, 14, 15, 12, 17] },
     { name: 'Data', rows: R2, merges: [], heights: {}, freeze: 1, widths: [8, 13, 13, 12, 30, 22, 8, 13, 14, 11, 16], tableXml },
   ]);
   const safeNo = String(bill.billNo).replace(/[^A-Za-z0-9_-]+/g, '-');

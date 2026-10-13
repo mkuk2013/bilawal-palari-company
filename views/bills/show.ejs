@@ -55,6 +55,34 @@
   </div>
 
   <% if (bill.type === 'aggregate') { %>
+  <% if (machinery) { %>
+  <div class="inv-table-scroll">
+  <table class="inv-table">
+    <thead>
+      <tr><th>S.No</th><th>Date</th><th>Veh No</th><th>DC No</th><th>Description</th><th>Hr</th><th>Qty</th><th>Rate (Rs.)</th><th>Amount (Rs.)</th></tr>
+    </thead>
+    <tbody>
+      <% groups.forEach(g => {
+        let gHr = 0, gQty = 0;
+        g.lines.forEach(l => { if (l.hr) gHr += Number(l.perTripCft) || 0; else gQty += Number(l.perTripCft) || 0; });
+      %>
+      <tr class="inv-section"><td colspan="9"><%= g.key.toUpperCase() %></td></tr>
+      <% g.lines.forEach(l => { %>
+      <tr>
+        <td><%= l.sno %></td><td><%= fmtDate(l.date) %></td><td><%= l.vehNo %></td><td><%= l.dcNo %></td>
+        <td><%= l.description %></td><td><%= l.hr ? fmt(l.perTripCft) : '' %></td><td><%= l.hr ? '' : fmt(l.perTripCft) %></td>
+        <td><%= fmt(l.rate) %></td><td class="num"><%= fmt(l.amount) %></td>
+      </tr>
+      <% }) %>
+      <tr class="inv-subtotal">
+        <td colspan="7"><%= g.key %> Total<% if (gHr > 0) { %> — <%= fmt(gHr) %> Hr<% } %><% if (gQty > 0) { %> — Qty <%= fmt(gQty) %><% } %></td>
+        <td></td><td class="num"><%= fmt(g.amount) %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div><!-- /inv-table-scroll -->
+  <% } else { %>
   <div class="inv-table-scroll">
   <table class="inv-table">
     <thead>
@@ -79,6 +107,7 @@
   </table>
 
   </div><!-- /inv-table-scroll -->
+  <% } %>
 
   <div class="inv-summary">
     <div class="inv-sumbox">
