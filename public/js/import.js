@@ -75,6 +75,7 @@
     trip: ['trip', 'trips', 'nooftrips', 'notrips', 'tripno'],
     qty: ['gln', 'gallons', 'gallon', 'gal', 'gl', 'gallonspertrip', 'capacity', 'cft', 'pertripcft', 'qtycft', 'pertripqty', 'pertripquantity', 'quantitypertrip', 'quantitycftpertrip'],
     tqty: ['qty', 'quantity', 'totalqty', 'totalquantity', 'qtytotal'],
+    hrs: ['hrs', 'hours', 'hr', 'hour', 'workinghours', 'workinghrs', 'days'],
     rate: ['rate', 'price', 'ratepkr', 'rateper'],
     amt: ['amount', 'totalamount', 'amountpkr', 'total']
   };
@@ -107,7 +108,7 @@
         });
       });
       var fields = Object.keys(map).map(function (k) { return map[k]; });
-      if (fields.length >= 3 && (fields.indexOf('veh') !== -1 || fields.indexOf('qty') !== -1 || fields.indexOf('tqty') !== -1)) {
+      if (fields.length >= 3 && (fields.indexOf('veh') !== -1 || fields.indexOf('qty') !== -1 || fields.indexOf('tqty') !== -1 || fields.indexOf('hrs') !== -1)) {
         return { row: i, map: map };
       }
     }
@@ -191,11 +192,11 @@
       }
       var f;
       if (type === 'aggregate') {
-        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: g('desc', 3), trip: g('trip', 4), qty: g('qty', 5), rate: g('rate', 6), tqty: g('tqty', -1) };
+        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: g('desc', 3), trip: g('trip', 4), qty: g('qty', 5), rate: g('rate', 6), tqty: g('tqty', -1), hrs: g('hrs', -1) };
       } else if (!map && r.filter(function (c) { return String(c == null ? '' : c).trim() !== ''; }).length >= 7) {
-        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: '', trip: g('trip', 4), qty: g('qty', 5), rate: g('rate', 6), tqty: '' };
+        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: '', trip: g('trip', 4), qty: g('qty', 5), rate: g('rate', 6), tqty: '', hrs: g('hrs', -1) };
       } else {
-        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: g('desc', -1), trip: g('trip', 3), qty: g('qty', 4), rate: g('rate', 5), tqty: g('tqty', -1) };
+        f = { date: g('date', 0), veh: g('veh', 1), dc: g('dc', 2), desc: g('desc', -1), trip: g('trip', 3), qty: g('qty', 4), rate: g('rate', 5), tqty: g('tqty', -1), hrs: g('hrs', -1) };
       }
       var vehRaw = String(f.veh == null ? '' : f.veh).trim();
       var descRaw = String(f.desc == null ? '' : f.desc).trim();
@@ -213,7 +214,7 @@
       }
       var hasVeh = vehRaw !== '';
       var hasDate = dateRaw !== '' && normDate(dateRaw) !== '';
-      var qtySignal = num(f.qty) > 0 || num(f.tqty) > 0;
+      var qtySignal = num(f.qty) > 0 || num(f.tqty) > 0 || num(f.hrs) > 0;
       if (afterTotal) {
         var resumes = (hasVeh && hasDate) || (hasVeh && qtySignal) || (hasDate && qtySignal);
         if (!resumes) { skipped++; if (qtySignal) skippedData++; continue; }
@@ -238,6 +239,9 @@
       var qty = num(f.qty);
       var tqty = num(f.tqty);
       if (qty <= 0 && tqty > 0) qty = Math.round((tqty / trip) * 100) / 100;
+      // Machinery sheets: an Hrs / Hours (or Days) column IS the quantity.
+      var hrs = num(f.hrs);
+      if (qty <= 0 && hrs > 0) qty = hrs;
       if (qty <= 0 && veh !== '') { var cap = caps[normKey(veh)] || 0; if (cap > 0) qty = cap; }
       var rate = num(f.rate);
       if (rate <= 0) {
@@ -396,10 +400,11 @@
   }
 
   function pdfHeaderFields(lineRuns) {
-    var labels = { date: 'date', vehno: 'veh', veh: 'veh', vehicleno: 'veh', vehicle: 'veh', dcno: 'dc', dc: 'dc', description: 'desc', material: 'desc', trip: 'trip', trips: 'trip', gln: 'qty', gallon: 'qty', gallons: 'qty', pertripcft: 'qty', cft: 'qty', qty: 'tqty', totalcft: 'tqty', totalqty: 'tqty', quantity: 'tqty', rate: 'rate', amount: 'amt' };
+    var labels = { date: 'date', vehno: 'veh', veh: 'veh', vehicleno: 'veh', vehicle: 'veh', dcno: 'dc', dc: 'dc', description: 'desc', material: 'desc', trip: 'trip', trips: 'trip', hrs: 'hrs', hours: 'hrs', hr: 'hrs', hour: 'hrs', days: 'hrs', gln: 'qty', gallon: 'qty', gallons: 'qty', pertripcft: 'qty', cft: 'qty', qty: 'tqty', totalcft: 'tqty', totalqty: 'tqty', quantity: 'tqty', rate: 'rate', amount: 'amt' };
     var fields = [];
-    lineRuns.forEach(function (r) { var k = normKey(r.text); if (labels[k]) fields.push(labels[k]); });
-    if (fields.length >= 4 && fields.indexOf('date') !== -1 && fields.indexOf('amt') !== -1) return fields;
+    lineRuns.forEach(function (r) { var k = normKey(r.text); fields.push(labels[k] || ''); }); // index-aligned with the runs
+    var known = fields.filter(function (f) { return f !== ''; });
+    if (known.length >= 4 && known.indexOf('date') !== -1 && known.indexOf('amt') !== -1) return fields;
     return null;
   }
 
@@ -450,6 +455,21 @@
         var t = String(r.text).trim();
         row[ci] = row[ci] === '' ? t : row[ci] + ' ' + t;
       });
+      // A merged summary row ("Oprator Per day Charges 2000") starts at
+      // the Date column and lands in the date cell — a long non-date
+      // text there is really the description when desc is empty.
+      var hdrFields = pdfHeaderFields(lines[headerIdx].runs) || [];
+      var dateCi = hdrFields.indexOf('date');
+      var descCi = hdrFields.indexOf('desc');
+      if (dateCi !== -1 && descCi !== -1 && row[descCi] === '') {
+        var dv = String(row[dateCi] || '').trim();
+        // Not a date if it is long text with words and no d.m.yyyy /
+        // dd-Mon / ISO date pattern inside it.
+        var looksDate = /\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/.test(dv)
+          || /\d{1,2}[\s\-](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(dv)
+          || /^\d{4}-\d{2}-\d{2}$/.test(dv);
+        if (dv.length >= 10 && /[a-z]{3,}/i.test(dv) && !looksDate) { row[descCi] = dv; row[dateCi] = ''; }
+      }
       rows.push(row);
     });
     if (!sectionSeen) {
