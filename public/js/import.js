@@ -216,7 +216,7 @@
       var hasDate = dateRaw !== '' && normDate(dateRaw) !== '';
       var qtySignal = num(f.qty) > 0 || num(f.tqty) > 0 || num(f.hrs) > 0;
       if (afterTotal) {
-        var resumes = (hasVeh && hasDate) || (hasVeh && qtySignal) || (hasDate && qtySignal);
+        var resumes = (hasVeh && hasDate) || (hasVeh && qtySignal) || (hasDate && qtySignal) || (descRaw !== '' && qtySignal);
         if (!resumes) { skipped++; if (qtySignal) skippedData++; continue; }
         afterTotal = false;
       }
