@@ -52,7 +52,7 @@
         }
       }
     }
-    var s = String(v).trim();
+    var s = String(v).trim().replace(/([\/\-.])\1+/g, '$1'); // "6..9.2026" -> "6.9.2026"
     var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (m) return m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
     m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
@@ -123,7 +123,7 @@
       var nonEmpty = cells.filter(function (c) { return c !== ''; });
       var line = nonEmpty.join(' ');
       var m;
-      if (!meta.billNo && (m = line.match(/bill\s*#?\s*no\.?\s*:?\s*([A-Za-z]{1,3}-?\d[\d-]*)/i))) meta.billNo = m[1].toUpperCase().replace(/^-+|-+$/g, '');
+      if (!meta.billNo && (m = line.match(/bill\s*#?\s*no\.?\s*#?\s*:?\s*([A-Za-z]{1,3}-?\d[\d-]*)/i))) meta.billNo = m[1].toUpperCase().replace(/^-+|-+$/g, '');
       if (!meta.poNo && (m = line.match(/PO-\d{2}-\d{4}-\d+/i))) meta.poNo = m[0].toUpperCase();
       if (/project/i.test(line)) {
         cells.forEach(function (c) {
@@ -281,7 +281,197 @@
     return out;
   }
 
-  var ImpCore = { normKey: normKey, num: num, normDate: normDate, findHeader: findHeader, extractMeta: extractMeta, mapRows: mapRows, sheetsFromWorkbook: sheetsFromWorkbook, buildPreviews: buildPreviews };
+  /* ---------------- PDF import (text-based PDFs, e.g. Excel "Print to PDF") ----------------
+     Port of the PHP reader (includes/pdf.php): PDF content streams carry
+     every text run at an absolute position (Tm). Runs are grouped into
+     printed lines by y, the header line defines the columns, each data
+     run joins its NEAREST header column — producing the same rows shape
+     as a sheet, so findHeader / extractMeta / mapRows work unchanged.
+     Scanned / photo PDFs have no text runs and get a clear error. */
+  function pdfUnescape(s) {
+    if (s.length >= 2 && s.charCodeAt(0) === 0xFE && s.charCodeAt(1) === 0xFF) {
+      try {
+        var bytes = new Uint8Array(s.length);
+        for (var bi = 0; bi < s.length; bi++) bytes[bi] = s.charCodeAt(bi) & 0xFF;
+        return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+      } catch (e) { /* fall through to byte-wise decode */ }
+    }
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === '\\' && i + 1 < s.length) {
+        var n = s[i + 1];
+        if (n >= '0' && n <= '7') {
+          var oct = n; i++;
+          while (i + 1 < s.length && oct.length < 3 && s[i + 1] >= '0' && s[i + 1] <= '7') { oct += s[i + 1]; i++; }
+          out += String.fromCharCode(parseInt(oct, 8));
+          continue;
+        }
+        var map = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' };
+        out += (n in map) ? map[n] : n;
+        i++;
+        continue;
+      }
+      out += c;
+    }
+    return out;
+  }
+
+  function pdfLatin1(u8) {
+    var s = '', CH = 32768;
+    for (var i = 0; i < u8.length; i += CH) s += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+    return s;
+  }
+
+  function pdfInflate(u8) {
+    // PDF FlateDecode is zlib — DecompressionStream('deflate') reads it.
+    // The EOL before "endstream" is not part of the data, and strict
+    // decoders reject it as trailing junk — retry once without it.
+    function attempt(bytes) {
+      var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+      return new Response(stream).arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+    }
+    return attempt(u8).catch(function () {
+      var end = u8.length;
+      if (end >= 2 && u8[end - 2] === 13 && u8[end - 1] === 10) end -= 2;
+      else if (end >= 1 && (u8[end - 1] === 10 || u8[end - 1] === 13)) end -= 1;
+      return attempt(u8.subarray(0, end));
+    });
+  }
+
+  async function pdfExtractRuns(buf) {
+    var all = new Uint8Array(buf);
+    var text = pdfLatin1(all);
+    var runs = [];
+    var page = 0;
+    var re = /stream\r?\n/g, m;
+    while ((m = re.exec(text)) !== null) {
+      var start = m.index + m[0].length;
+      var end = text.indexOf('endstream', start);
+      if (end === -1) break;
+      re.lastIndex = end + 9;
+      var raw = all.subarray(start, end);
+      var content = null;
+      try { content = pdfLatin1(await pdfInflate(raw)); } catch (e) { content = null; }
+      if (content === null || (content.indexOf(' TJ') === -1 && content.indexOf(' Tj') === -1)) {
+        var rawText = pdfLatin1(raw);
+        if (rawText.indexOf(' TJ') === -1 && rawText.indexOf(' Tj') === -1) continue;
+        content = rawText;
+      }
+      var pageRuns = [];
+      var x = 0, y = 0;
+      var tok = /([-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s+([-0-9.]+)\s+([-0-9.]+)\s+Tm)|(([-0-9.]+)\s+([-0-9.]+)\s+Td)|\[((?:[^\[\]\\]|\\.|\((?:\\.|\([^()]*\)|[^\\()])*\)|[-0-9.]+|\s)*)\]\s*TJ|\(((?:\\.|\([^()]*\)|[^\\()])*)\)\s*Tj/g;
+      var t;
+      while ((t = tok.exec(content)) !== null) {
+        if (t[1] !== undefined) { x = parseFloat(t[2]); y = parseFloat(t[3]); continue; }
+        if (t[4] !== undefined) { x += parseFloat(t[5]); y += parseFloat(t[6]); continue; }
+        var txt = '';
+        if (t[7] !== undefined) {
+          var parts = t[7].match(/\(((?:\\.|\([^()]*\)|[^\\()])*)\)/g) || [];
+          parts.forEach(function (p) { txt += pdfUnescape(p.slice(1, -1)); });
+        } else if (t[8] !== undefined) {
+          txt = pdfUnescape(t[8]);
+        }
+        if (txt.trim() !== '') pageRuns.push({ page: page, x: x, y: y, text: txt.replace(/\s+/g, ' ') });
+      }
+      if (pageRuns.length) { runs = runs.concat(pageRuns); page++; }
+    }
+    return runs;
+  }
+
+  function pdfGroupLines(runs) {
+    var sorted = runs.slice().sort(function (a, b) {
+      if (a.page !== b.page) return a.page - b.page;
+      if (Math.abs(a.y - b.y) > 3.5) return b.y - a.y; // PDF y grows upward
+      return a.x - b.x;
+    });
+    var lines = [];
+    sorted.forEach(function (r) {
+      var last = lines[lines.length - 1];
+      if (last && last.page === r.page && Math.abs(last.y - r.y) <= 3.5) last.runs.push(r);
+      else lines.push({ page: r.page, y: r.y, runs: [r] });
+    });
+    lines.forEach(function (ln) { ln.runs.sort(function (a, b) { return a.x - b.x; }); });
+    return lines;
+  }
+
+  function pdfHeaderFields(lineRuns) {
+    var labels = { date: 'date', vehno: 'veh', veh: 'veh', vehicleno: 'veh', vehicle: 'veh', dcno: 'dc', dc: 'dc', description: 'desc', material: 'desc', trip: 'trip', trips: 'trip', gln: 'qty', gallon: 'qty', gallons: 'qty', pertripcft: 'qty', cft: 'qty', qty: 'tqty', totalcft: 'tqty', totalqty: 'tqty', quantity: 'tqty', rate: 'rate', amount: 'amt' };
+    var fields = [];
+    lineRuns.forEach(function (r) { var k = normKey(r.text); if (labels[k]) fields.push(labels[k]); });
+    if (fields.length >= 4 && fields.indexOf('date') !== -1 && fields.indexOf('amt') !== -1) return fields;
+    return null;
+  }
+
+  function pdfBuildSheet(runs, filename) {
+    var lines = pdfGroupLines(runs);
+    var headerIdx = -1, colX = [], colCount = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (pdfHeaderFields(lines[i].runs)) {
+        headerIdx = i;
+        colX = lines[i].runs.map(function (r) { return r.x; });
+        colCount = lines[i].runs.length;
+        break;
+      }
+    }
+    if (headerIdx === -1) throw new Error('Is PDF mein bill wali table (Date / Vehicle / Amount wala header) nahi mili — ye PDF parhi nahi ja sakti. Excel (.xlsx) file upload karein.');
+    var rows = [], sectionSeen = false;
+    lines.forEach(function (ln, i) {
+      var texts = ln.runs.map(function (r) { return String(r.text).trim(); });
+      if (i < headerIdx) {
+        // "Projet:" is the client's own typo — meta looks for "Project".
+        // A merged meta cell arrives as ONE run — split label and value.
+        if (texts.length === 1) {
+          var pm = texts[0].match(/^(Projet|Project)\s*:\s*(.+)$/i);
+          if (pm) texts = ['Project:', pm[2].trim()];
+          else texts = [texts[0].replace(/^Projet\b/i, 'Project')];
+        } else {
+          texts = texts.map(function (t) { return t.replace(/^Projet\b/i, 'Project'); });
+        }
+        if (texts.length === 1 && texts[0].length <= 40 && !/bilawal|company|supplir|supplier/i.test(texts[0])) sectionSeen = true;
+        rows.push(texts);
+        return;
+      }
+      if (i === headerIdx) { rows.push(texts); return; }
+      if (pdfHeaderFields(ln.runs)) return; // repeated page header
+      var joined = texts.join(' ');
+      if (/bilawal palari/i.test(joined)) return;
+      if (/page\s+\d+\s+of\s+\d+/i.test(joined)) return;
+      if (texts.length === 1 && joined.toLowerCase().indexOf('total') === -1 && !/^\d+$/.test(texts[0])) {
+        if (texts[0].length > 3 && isNaN(Number(texts[0].replace(/[\s,.]/g, '')))) return; // stray line
+      }
+      var row = [];
+      for (var c = 0; c < colCount; c++) row.push('');
+      ln.runs.forEach(function (r) {
+        // NEAREST header start: values are often right-aligned and can
+        // start a few points LEFT of their header word.
+        var ci = 0, best = Infinity;
+        colX.forEach(function (cx, k) { var d = Math.abs(r.x - cx); if (d < best) { best = d; ci = k; } });
+        var t = String(r.text).trim();
+        row[ci] = row[ci] === '' ? t : row[ci] + ' ' + t;
+      });
+      rows.push(row);
+    });
+    if (!sectionSeen) {
+      var headerTexts = lines[headerIdx].runs.map(function (r) { return normKey(r.text); });
+      var synthetic = '';
+      if (headerTexts.indexOf('gln') !== -1 || headerTexts.indexOf('gallon') !== -1 || headerTexts.indexOf('gallons') !== -1) synthetic = 'Sweet Water';
+      else if (headerTexts.indexOf('pertripcft') !== -1 || headerTexts.indexOf('totalcft') !== -1) synthetic = 'Aggregate';
+      if (synthetic) rows.splice(headerIdx, 0, [synthetic]);
+    }
+    var title = String(filename || 'PDF Bill').replace(/\.[^.]*$/, '');
+    return { title: title || 'PDF Bill', rows: rows };
+  }
+
+  async function sheetsFromPdf(buf, filename) {
+    var head = pdfLatin1(new Uint8Array(buf).subarray(0, 1024));
+    if (head.indexOf('%PDF') === -1) throw new Error('Ye file PDF nahi lagti — sahi .pdf file upload karein.');
+    var runs = await pdfExtractRuns(buf);
+    if (!runs.length) throw new Error('Is PDF mein parhne layak text nahi mila — agar ye scanned / photo wali PDF hai to us ke records khud nahi parhe ja sakte. Excel (.xlsx) file upload karein, ya records copy-paste kar dein.');
+    return [pdfBuildSheet(runs, filename)];
+  }
+
+  var ImpCore = { normKey: normKey, num: num, normDate: normDate, findHeader: findHeader, extractMeta: extractMeta, mapRows: mapRows, sheetsFromWorkbook: sheetsFromWorkbook, buildPreviews: buildPreviews, sheetsFromPdf: sheetsFromPdf };
   if (typeof window !== 'undefined') window.ImpCore = ImpCore;
   if (typeof module !== 'undefined' && module.exports) module.exports = ImpCore;
 
@@ -381,6 +571,16 @@
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
+    if (/\.pdf$/i.test(file.name)) {
+      file.arrayBuffer().then(function (buf) { return sheetsFromPdf(buf, file.name); }).then(function (sheets) {
+        lastSheets = sheets;
+        process();
+      }).catch(function (err) {
+        msg.style.display = '';
+        msg.textContent = (err && err.message) ? err.message : 'PDF parhi nahi ja saki.';
+      });
+      return;
+    }
     if (!window.XLSX) {
       msg.style.display = '';
       msg.textContent = 'Excel parhne wali library load nahi ho saki — internet check karke page refresh karein.';

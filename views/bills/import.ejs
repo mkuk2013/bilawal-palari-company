@@ -1,7 +1,7 @@
 <%- include('../partials/header') %>
 <section class="card">
-  <h2>📥 Excel se bill import karein</h2>
-  <p class="muted">Client ki Excel (.xlsx) ya CSV file upload karein — saari lines bill mein khud aa jayengi. Upload ke baad pehle <strong>preview</strong> nazar ayega, check karke Save dabayein ge to bill banega.</p>
+  <h2>📥 Excel / PDF se bill import karein</h2>
+  <p class="muted">Client ki Excel (.xlsx), CSV ya <strong>PDF</strong> file upload karein — saari lines bill mein khud aa jayengi. Upload ke baad pehle <strong>preview</strong> nazar ayega, check karke Save dabayein ge to bill banega. PDF sirf woh wali chalegi jo Excel se print/save ki gayi ho (andar text ho) — scanned ya photo wali PDF ke records nahi parhe ja sakte.</p>
   <div class="form-grid">
     <label>Bill type
       <select id="impType">
@@ -9,8 +9,8 @@
         <option value="water">Sweet water (gallons)</option>
       </select>
     </label>
-    <label>Excel / CSV file
-      <input type="file" id="impFile" accept=".xlsx,.xls,.csv">
+    <label>Excel / CSV / PDF file
+      <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.pdf">
     </label>
   </div>
   <p class="muted small">
