@@ -108,7 +108,7 @@
         });
       });
       var fields = Object.keys(map).map(function (k) { return map[k]; });
-      if (fields.length >= 3 && (fields.indexOf('veh') !== -1 || fields.indexOf('qty') !== -1 || fields.indexOf('tqty') !== -1 || fields.indexOf('hrs') !== -1)) {
+      if (fields.length >= 3 && (fields.indexOf('veh') !== -1 || fields.indexOf('qty') !== -1 || fields.indexOf('tqty') !== -1 || fields.indexOf('hrs') !== -1 || fields.indexOf('desc') !== -1)) {
         return { row: i, map: map };
       }
     }
@@ -399,18 +399,28 @@
     return lines;
   }
 
-  function pdfHeaderFields(lineRuns) {
+  function pdfLineFields(lineRuns) {
     var labels = { date: 'date', vehno: 'veh', veh: 'veh', vehicleno: 'veh', vehicle: 'veh', dcno: 'dc', dc: 'dc', description: 'desc', material: 'desc', trip: 'trip', trips: 'trip', hrs: 'hrs', hours: 'hrs', hr: 'hrs', hour: 'hrs', days: 'hrs', gln: 'qty', gallon: 'qty', gallons: 'qty', pertripcft: 'qty', cft: 'qty', qty: 'tqty', totalcft: 'tqty', totalqty: 'tqty', quantity: 'tqty', rate: 'rate', amount: 'amt' };
     var fields = [];
     lineRuns.forEach(function (r) { var k = normKey(r.text); fields.push(labels[k] || ''); }); // index-aligned with the runs
+    return fields;
+  }
+
+  function pdfHeaderFields(lineRuns) {
+    var fields = pdfLineFields(lineRuns);
     var known = fields.filter(function (f) { return f !== ''; });
-    if (known.length >= 4 && known.indexOf('date') !== -1 && known.indexOf('amt') !== -1) return fields;
+    // At least 3 named columns, a money column (Amount or Rate) and one
+    // content column. No single column (Date, Amount, DC...) is
+    // mandatory — a bill missing a column still imports.
+    var hasMoney = known.indexOf('amt') !== -1 || known.indexOf('rate') !== -1;
+    var hasContent = ['date', 'desc', 'qty', 'tqty', 'hrs'].some(function (f) { return known.indexOf(f) !== -1; });
+    if (known.length >= 3 && hasMoney && hasContent) return fields;
     return null;
   }
 
   function pdfBuildSheet(runs, filename) {
     var lines = pdfGroupLines(runs);
-    var headerIdx = -1, colX = [], colCount = 0;
+    var headerIdx = -1, colX = [], colCount = 0, fallbackMode = false;
     for (var i = 0; i < lines.length; i++) {
       if (pdfHeaderFields(lines[i].runs)) {
         headerIdx = i;
@@ -419,7 +429,23 @@
         break;
       }
     }
-    if (headerIdx === -1) throw new Error('Is PDF mein bill wali table (Date / Vehicle / Amount wala header) nahi mili — ye PDF parhi nahi ja sakti. Excel (.xlsx) file upload karein.');
+    if (headerIdx === -1) {
+      // No recognizable header names: fall back to the widest printed
+      // line as the column template, so the bill STILL imports.
+      fallbackMode = true;
+      var bestCount = 3;
+      for (var j = 0; j < lines.length; j++) {
+        if (lines[j].runs.length > bestCount) { bestCount = lines[j].runs.length; headerIdx = j; }
+      }
+      if (headerIdx === -1) throw new Error('Is PDF mein bill wali table nahi mili — ye PDF parhi nahi ja sakti. Excel (.xlsx) file upload karein.');
+      colX = lines[headerIdx].runs.map(function (r) { return r.x; });
+      colCount = lines[headerIdx].runs.length;
+    }
+    // In fallback mode a leading Sr column is dropped so positions line
+    // up with the standard template order.
+    var srNames = ['sr', 'sno', 'srno', 'serial', 'serialno'];
+    var dropFirst = fallbackMode && colCount > 0 && srNames.indexOf(normKey(lines[headerIdx].runs[0].text)) !== -1;
+    var hdrJoined = lines[headerIdx].runs.map(function (r) { return String(r.text).trim(); }).join('|');
     var rows = [], sectionSeen = false;
     lines.forEach(function (ln, i) {
       var texts = ln.runs.map(function (r) { return String(r.text).trim(); });
@@ -437,8 +463,25 @@
         rows.push(texts);
         return;
       }
-      if (i === headerIdx) { rows.push(texts); return; }
+      if (i === headerIdx) {
+        if (dropFirst) texts.shift();
+        if (fallbackMode) {
+          // Name the columns: a recognized name wins; the rest take
+          // the standard template order by position.
+          var rev = { date: 'Date', veh: 'Vehicle No', dc: 'DC No', desc: 'Description', trip: 'Trip', qty: 'Gln', tqty: 'Qty', hrs: 'Hrs', rate: 'Rate', amt: 'Amount' };
+          var posNames = ['Date', 'Vehicle No', 'DC No', 'Description', 'Trip', 'Gln', 'Rate', 'Qty'];
+          var lf = pdfLineFields(lines[headerIdx].runs);
+          if (dropFirst) lf.shift();
+          texts = texts.map(function (t, ci) {
+            var f = lf[ci] || '';
+            return (f && rev[f]) ? rev[f] : (posNames[ci] || t);
+          });
+        }
+        rows.push(texts);
+        return;
+      }
       if (pdfHeaderFields(ln.runs)) return; // repeated page header
+      if (texts.join('|') === hdrJoined) return; // repeated template (fallback mode)
       var joined = texts.join(' ');
       if (/bilawal palari/i.test(joined)) return;
       if (/page\s+\d+\s+of\s+\d+/i.test(joined)) return;
@@ -470,6 +513,7 @@
           || /^\d{4}-\d{2}-\d{2}$/.test(dv);
         if (dv.length >= 10 && /[a-z]{3,}/i.test(dv) && !looksDate) { row[descCi] = dv; row[dateCi] = ''; }
       }
+      if (dropFirst) row.shift();
       rows.push(row);
     });
     if (!sectionSeen) {
